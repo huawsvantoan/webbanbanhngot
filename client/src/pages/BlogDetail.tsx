@@ -7,6 +7,7 @@ interface BlogPost {
   title: string;
   content: string;
   image?: string;
+  image_url?: string;
   created_at: string;
 }
 
@@ -38,7 +39,11 @@ const BlogDetail: React.FC = () => {
     <div className="container mx-auto py-8 max-w-2xl">
       <Link to="/blog" className="text-pink-600 hover:underline mb-4 inline-block">← Quay lại danh sách</Link>
       <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
-      <img src={post.image || '/images/default-cake.jpg'} alt={post.title} className="w-full h-64 object-cover rounded mb-6" />
+      <img
+        src={post.image_url ? `${process.env.REACT_APP_API_URL}${post.image_url}` : post.image ? `${process.env.REACT_APP_API_URL}${post.image}` : '/images/default-cake.jpg'}
+        alt={post.title}
+        className="w-full h-64 object-cover rounded mb-6"
+      />
       <div className="text-gray-600 mb-6 whitespace-pre-line">{post.content}</div>
       <div className="text-xs text-gray-400">Ngày đăng: {new Date(post.created_at).toLocaleDateString('vi-VN')}</div>
     </div>

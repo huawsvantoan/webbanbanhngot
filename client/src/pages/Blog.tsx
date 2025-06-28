@@ -6,6 +6,7 @@ interface BlogPost {
   id: number;
   title: string;
   content: string;
+  image_url?: string;
   image?: string;
   created_at: string;
   isDraft?: boolean;
@@ -40,7 +41,11 @@ const Blog: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map(post => (
           <Link to={`/blog/${post.id}`} key={post.id} className="block bg-white rounded-lg shadow-md hover:shadow-lg transition p-4">
-            <img src={post.image || '/images/default-cake.jpg'} alt={post.title} className="w-full h-40 object-cover rounded mb-4" />
+            <img
+              src={post.image_url ? `${process.env.REACT_APP_API_URL}${post.image_url}` : post.image ? `${process.env.REACT_APP_API_URL}${post.image}` : '/images/default-cake.jpg'}
+              alt={post.title}
+              className="w-full h-40 object-cover rounded mb-4"
+            />
             <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
             <p className="text-gray-600 text-sm line-clamp-3">{post.content}</p>
             <div className="text-xs text-gray-400 mt-2">{new Date(post.created_at).toLocaleDateString('vi-VN')}</div>

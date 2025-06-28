@@ -18,7 +18,6 @@ const Products: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'name_asc' | 'name_desc'>('name_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 12;
@@ -52,7 +51,6 @@ const Products: React.FC = () => {
         const params = new URLSearchParams({
           page: currentPage.toString(),
           limit: itemsPerPage.toString(),
-          sort: sortBy,
           ...(searchQuery && { search: searchQuery }),
           ...(selectedCategory && { category: selectedCategory.toString() })
         });
@@ -68,7 +66,7 @@ const Products: React.FC = () => {
       }
     };
     fetchProducts();
-  }, [currentPage, sortBy, searchQuery, selectedCategory]);
+  }, [currentPage, searchQuery, selectedCategory]);
 
   const handleAddToCart = async (productId: number) => {
     if (!user) {
@@ -77,17 +75,12 @@ const Products: React.FC = () => {
     }
 
     try {
-      await api.post('/cart/items', { productId, quantity: 1 });
+      await api.post('/cart', { productId, quantity: 1 });
       // Show success message or update cart count
     } catch (err) {
       console.error('Error adding to cart:', err);
       // Show error message
     }
-  };
-
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortBy(e.target.value as typeof sortBy);
-    setCurrentPage(1);
   };
 
   const handleCategoryChange = (categoryId: number | null) => {
@@ -142,16 +135,6 @@ const Products: React.FC = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
               />
             </div>
-            <select
-              value={sortBy}
-              onChange={handleSortChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-            >
-              <option value="name_asc">Name (A-Z)</option>
-              <option value="name_desc">Name (Z-A)</option>
-              <option value="price_asc">Price (Low to High)</option>
-              <option value="price_desc">Price (High to Low)</option>
-            </select>
           </form>
 
           {/* Categories */}
@@ -194,7 +177,13 @@ const Products: React.FC = () => {
               <Link to={`/products/${product.id}`} className="block">
                 <div className="relative aspect-square">
                   <img
-                    src={`${process.env.REACT_APP_API_URL}/uploads/${product.image_url}`}
+                    src={
+                      product.image_url
+                        ? product.image_url.startsWith('http')
+                          ? product.image_url
+                          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${product.image_url.startsWith('/') ? '' : '/uploads/'}${product.image_url}`
+                        : '/images/default-cake.jpg'
+                    }
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />

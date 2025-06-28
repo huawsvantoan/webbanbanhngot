@@ -11,6 +11,7 @@ interface BlogPost {
   content: string;
   excerpt: string;
   image: string;
+  image_url?: string;
   status: 'draft' | 'published' | 'archived';
   author_id: number;
   author_name: string;
@@ -41,6 +42,7 @@ const AdminBlogManagement: React.FC = () => {
     content: '',
     excerpt: '',
     image: '',
+    image_url: '',
     status: 'draft' as BlogPost['status'],
     tags: ''
   });
@@ -80,8 +82,15 @@ const AdminBlogManagement: React.FC = () => {
     if (formData.excerpt && formData.excerpt.length > 255) {
       errors.excerpt = 'Tóm tắt không được vượt quá 255 ký tự';
     }
-    if (formData.image && formData.image.length > 0 && !/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(formData.image)) {
-      errors.image = 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh)';
+    if (
+      formData.image &&
+      formData.image.length > 0 &&
+      !(
+        /^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(formData.image) ||
+        /^\/uploads\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(formData.image)
+      )
+    ) {
+      errors.image = 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh hoặc ảnh đã upload)';
     }
     return errors;
   };
@@ -93,6 +102,7 @@ const AdminBlogManagement: React.FC = () => {
     try {
       const postData = {
         ...formData,
+        image_url: formData.image || formData.image_url,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
       await api.post('/admin/blog', postData);
@@ -114,6 +124,7 @@ const AdminBlogManagement: React.FC = () => {
     try {
       const postData = {
         ...formData,
+        image_url: formData.image || formData.image_url,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
       await api.put(`/admin/blog/${editingPost.id}`, postData);
@@ -148,6 +159,7 @@ const AdminBlogManagement: React.FC = () => {
       content: post.content,
       excerpt: post.excerpt,
       image: post.image,
+      image_url: post.image_url || '',
       status: post.status,
       tags: post.tags.join(', ')
     });
@@ -164,6 +176,7 @@ const AdminBlogManagement: React.FC = () => {
       content: '',
       excerpt: '',
       image: '',
+      image_url: '',
       status: 'draft',
       tags: ''
     });
@@ -213,6 +226,23 @@ const AdminBlogManagement: React.FC = () => {
     } finally {
       setShowPermanentDeleteModal(false);
       setPostToPermanentDelete(null);
+    }
+  };
+
+  // Thêm hàm xử lý upload ảnh
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setFormData(prev => ({ ...prev, image: res.data.imageUrl }));
+      toast.success('Tải ảnh lên thành công!');
+    } catch (err) {
+      toast.error('Tải ảnh lên thất bại!');
     }
   };
 
@@ -299,7 +329,7 @@ const AdminBlogManagement: React.FC = () => {
               className={`bg-white rounded-lg shadow-md overflow-hidden ${Number(post.isDeleted) === 1 ? 'opacity-60' : ''}`}
             >
               <img
-                src={post.image || '/images/default-blog.jpg'}
+                src={post.image_url ? `${process.env.REACT_APP_API_URL}${post.image_url}` : post.image ? `${process.env.REACT_APP_API_URL}${post.image}` : '/images/default-blog.jpg'}
                 alt={post.title}
                 className="w-full h-48 object-cover"
               />
@@ -453,18 +483,21 @@ const AdminBlogManagement: React.FC = () => {
                       {formErrors.content && <div className="text-red-500 text-sm mt-1">{formErrors.content}</div>}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Đường dẫn ảnh
-                      </label>
+                    <div className="mb-4">
+                      <label className="block text-gray-700 font-medium mb-2">Ảnh bài viết</label>
+                      {formData.image && (
+                        <img
+                          src={formData.image.startsWith('/uploads') ? `${process.env.REACT_APP_API_URL}${formData.image}` : formData.image}
+                          alt="Preview"
+                          className="w-32 h-32 object-cover rounded mb-2 border"
+                        />
+                      )}
                       <input
-                        type="text"
-                        value={formData.image}
-                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="Nhập đường dẫn ảnh"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
                       />
-                      {formErrors.image && <div className="text-red-500 text-sm mt-1">{formErrors.image}</div>}
                     </div>
 
                     <div>

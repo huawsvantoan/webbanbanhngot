@@ -7,11 +7,9 @@ import authRoutes from './src/routes/auth';
 import productRoutes from './src/routes/products';
 import orderRoutes from './src/routes/orders';
 import bannerRoutes from './src/routes/banners';
-import couponRoutes from './src/routes/coupons';
 import blogRoutes from './src/routes/blog';
 import dashboardRoutes from './src/routes/dashboard';
 import analyticsRoutes from './src/routes/analytics';
-import customerRoutes from './src/routes/customers';
 import adminOrderRoutes from './src/routes/adminOrders';
 import adminReviewsRoutes from './src/routes/adminReviews';
 
@@ -30,11 +28,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', bannerRoutes);
-app.use('/api/admin', couponRoutes);
 app.use('/api/admin', blogRoutes);
 app.use('/api/admin', dashboardRoutes);
 app.use('/api/admin', analyticsRoutes);
-app.use('/api/admin', customerRoutes);
 app.use('/api/admin', adminOrderRoutes);
 app.use('/api/admin', adminReviewsRoutes);
 

@@ -14,11 +14,11 @@ import adminOrdersRoutes from './src/routes/adminOrders';
 import adminReviewsRoutes from './src/routes/adminReviews';
 import bannersRoutes from './src/routes/banners';
 import dashboardRoutes from './src/routes/dashboard';
-import customersRoutes from './src/routes/customers';
 import blogRoutes from './src/routes/blog';
 import usersRoutes from './src/routes/users';
 import analyticsRoutes from './src/routes/analytics';
 import contactsRoutes from './src/routes/contacts';
+import uploadRoutes from './src/routes/upload';
 
 dotenv.config();
 
@@ -56,13 +56,12 @@ app.use('/api/admin', adminOrdersRoutes);
 app.use('/api/admin', adminReviewsRoutes);
 app.use('/api/admin', bannersRoutes);
 app.use('/api/admin', dashboardRoutes);
-app.use('/api', customersRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/admin/blog', blogRoutes);
 app.use('/api/admin/users', usersRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/contacts', contactsRoutes);
-
+app.use('/api/upload', uploadRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

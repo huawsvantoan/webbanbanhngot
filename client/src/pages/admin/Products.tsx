@@ -188,7 +188,7 @@ const AdminProducts: React.FC = () => {
                   <tr key={product.id} className={`hover:bg-gray-50 ${product.isDeleted === 1 ? 'opacity-60' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <img
-                        src={product.image_url || '/images/default-cake.png'}
+                        src={product.image_url ? `${process.env.REACT_APP_API_URL}${product.image_url}` : product.image ? `${process.env.REACT_APP_API_URL}${product.image}` : '/images/default-cake.png'}
                         alt={product.name}
                         className="h-16 w-16 object-cover rounded-lg"
                       />
