@@ -15,11 +15,28 @@ export interface IProduct extends RowDataPacket {
 }
 
 export class Product {
-  static async findAll(includeDeleted = false): Promise<IProduct[]> {
-    const query = includeDeleted
-      ? 'SELECT * FROM products'
-      : 'SELECT * FROM products WHERE isDeleted = 0';
-    const [rows] = await pool.query<IProduct[]>(query);
+  static async findAll(
+    options: {
+      includeDeleted?: boolean,
+      search?: string,
+      categoryId?: number
+    } = {}
+  ): Promise<IProduct[]> {
+    const { includeDeleted = false, search, categoryId } = options;
+    let query = 'SELECT * FROM products WHERE 1=1';
+    const params: any[] = [];
+    if (!includeDeleted) {
+      query += ' AND isDeleted = 0';
+    }
+    if (search) {
+      query += ' AND (name LIKE ? OR description LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (categoryId) {
+      query += ' AND category_id = ?';
+      params.push(categoryId);
+    }
+    const [rows] = await pool.query<IProduct[]>(query, params);
     return rows.map(product => ({ ...product, price: parseFloat(product.price as any) }));
   }
 

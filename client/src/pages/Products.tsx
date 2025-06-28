@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { Product } from '../types/product';
@@ -14,12 +14,15 @@ const Products: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'name_asc' | 'name_desc'>('name_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 12;
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -35,6 +38,14 @@ const Products: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const urlSearch = searchParams.get('search') || '';
+    setSearchTerm(urlSearch);
+    setSearchQuery(urlSearch);
+    setCurrentPage(1);
+    // eslint-disable-next-line
+  }, [searchParams.get('search')]);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
@@ -42,10 +53,9 @@ const Products: React.FC = () => {
           page: currentPage.toString(),
           limit: itemsPerPage.toString(),
           sort: sortBy,
-          ...(searchTerm && { search: searchTerm }),
+          ...(searchQuery && { search: searchQuery }),
           ...(selectedCategory && { category: selectedCategory.toString() })
         });
-
         const response = await api.get(`/products?${params}`);
         setProducts(response.data);
         setTotalPages(Math.ceil(response.data.length / itemsPerPage));
@@ -57,9 +67,8 @@ const Products: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchProducts();
-  }, [currentPage, sortBy, searchTerm, selectedCategory]);
+  }, [currentPage, sortBy, searchQuery, selectedCategory]);
 
   const handleAddToCart = async (productId: number) => {
     if (!user) {
@@ -89,6 +98,13 @@ const Products: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
+    if (searchTerm.trim()) {
+      setSearchQuery(searchTerm.trim());
+      setSearchParams({ search: searchTerm.trim() });
+    } else {
+      setSearchQuery('');
+      setSearchParams({});
+    }
   };
 
   if (loading) {

@@ -16,9 +16,10 @@ export const upload = multer({ storage: storage });
 
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Nếu là admin, cho phép lấy cả sản phẩm đã xóa mềm qua query includeDeleted
     const includeDeleted = req.query.includeDeleted === 'true';
-    const products = await Product.findAll(includeDeleted);
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    const products = await Product.findAll({ includeDeleted, search, categoryId });
     res.status(200).json(products);
   } catch (error) {
     console.error('Error fetching products:', error);

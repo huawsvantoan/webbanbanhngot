@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -14,6 +14,24 @@ const Header: React.FC = () => {
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { items } = useAppSelector((state: RootState) => state.cart);
   const isAuthenticated = authService.isAuthenticated();
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchTerm.trim())}`);
+      setShowSearch(false);
+      setSearchTerm('');
+    }
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -67,11 +85,35 @@ const Header: React.FC = () => {
         </div>
 
         {/* Right Section - Icons and Auth */}
-        <div className="flex items-center space-x-6">
-          {/* Search Icon */}
-          <button className="text-gray-700 hover:text-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50">
-            <Icons.Search size={24} />
-          </button>
+        <div className="flex items-center space-x-6 relative">
+          {/* Search Icon & Input */}
+          <div className="relative">
+            <button
+              className="text-gray-700 hover:text-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
+              onClick={() => setShowSearch((prev) => !prev)}
+              aria-label="Tìm kiếm sản phẩm"
+            >
+              <Icons.Search size={24} />
+            </button>
+            {showSearch && (
+              <form
+                onSubmit={handleSearchSubmit}
+                className="absolute right-0 mt-2 bg-white border border-gray-200 rounded shadow-lg flex z-50"
+                style={{ minWidth: 200 }}
+              >
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Tìm sản phẩm..."
+                  className="px-3 py-1 outline-none w-full"
+                  onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+                />
+                <button type="submit" className="px-3 text-pink-600 font-bold">Go</button>
+              </form>
+            )}
+          </div>
 
           {/* Cart Icon */}
           <NavLink to="/cart" className="text-gray-700 hover:text-pink-600 relative focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50">
