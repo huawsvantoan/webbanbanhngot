@@ -42,10 +42,10 @@ export const createVnpayPaymentUrl = (req: Request, res: Response) => {
     vnp_CurrCode: 'VND',
     vnp_TxnRef: orderId,
     vnp_OrderInfo: orderInfo,
-    vnp_OrderType: 'other',
+    vnp_OrderType: 'billpayment',
     vnp_Amount: Math.round(Number(amount) * 100),
     vnp_ReturnUrl: returnUrl,
-    vnp_IpAddr: ipAddr,
+    vnp_IpAddr: '0.0.0.0',
     vnp_CreateDate,
   };
 
