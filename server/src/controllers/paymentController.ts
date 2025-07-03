@@ -22,7 +22,8 @@ export const createVnpayPaymentUrl = (req: Request, res: Response) => {
   let { amount, orderId, orderInfo } = req.body;
   // Nếu client không truyền orderId/orderInfo thì fallback
   orderId = orderId || Date.now().toString();
-  orderInfo = orderInfo || 'Test';
+  // Loại bỏ dấu tiếng Việt trong orderInfo để tránh lỗi chữ ký
+  orderInfo = orderInfo ? removeVietnameseTones(orderInfo) : 'Thanh toan don hang Cake Shop';
   const createDate = new Date();
   const pad = (n: number) => n < 10 ? '0' + n : n;
   const vnp_CreateDate =
