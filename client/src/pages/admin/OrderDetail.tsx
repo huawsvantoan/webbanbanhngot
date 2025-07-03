@@ -31,6 +31,8 @@ interface Order {
   name?: string;
   phone?: string;
   note?: string;
+  payment_method: string;
+  payment_proof?: string | null;
 }
 
 const OrderDetail: React.FC = () => {
@@ -126,6 +128,12 @@ const OrderDetail: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Debug: log giá trị payment_proof để kiểm tra
+  if (order) {
+    // eslint-disable-next-line no-console
+    console.log('DEBUG payment_proof:', order.payment_proof);
   }
 
   return (
@@ -331,6 +339,38 @@ const OrderDetail: React.FC = () => {
             </div>
 
             {/* Order Summary */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Thông tin thanh toán</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Phương thức:</span>
+                  <span className="font-medium">
+                    {order.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
+                  </span>
+                </div>
+                {order.payment_method === 'bank' && order.payment_proof && (
+                  <div>
+                    <span className="text-gray-600">Ảnh xác nhận chuyển khoản:</span>
+                    <img
+                      src={order.payment_proof}
+                      alt="Payment proof"
+                      className="mt-2 mb-2 rounded border-2 border-pink-400 w-40"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                )}
+                {order.payment_method === 'bank' && (
+                  <div className="text-green-600 font-medium mt-2">
+                    Khách đã chuyển khoản trước số tiền này.
+                  </div>
+                )}
+                {order.payment_method === 'cod' && (
+                  <div className="text-yellow-600 font-medium mt-2">
+                    Khách sẽ thanh toán khi nhận hàng (COD).
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Tóm tắt đơn hàng</h2>
               <div className="space-y-3">

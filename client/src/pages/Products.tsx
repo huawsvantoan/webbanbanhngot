@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Product } from '../types/product';
 import { Category } from '../types/category';
 import api from '../services/api';
+import { CartIconRef } from '../components/Header';
 
 const Products: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Products: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 12;
   const isFirstLoad = useRef(true);
+  const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -68,15 +70,48 @@ const Products: React.FC = () => {
     fetchProducts();
   }, [currentPage, searchQuery, selectedCategory]);
 
-  const handleAddToCart = async (productId: number) => {
+  const handleAddToCart = async (productId: number, e: React.MouseEvent, imgElement: HTMLImageElement | null) => {
     if (!user) {
       navigate('/login');
       return;
     }
+    // Animation
+    if (imgElement && CartIconRef.current) {
+      const imgRect = imgElement.getBoundingClientRect();
+      const cartRect = CartIconRef.current.getBoundingClientRect();
+      const flyingImg = imgElement.cloneNode(true) as HTMLImageElement;
+      flyingImg.style.position = 'fixed';
+      flyingImg.style.left = imgRect.left + 'px';
+      flyingImg.style.top = imgRect.top + 'px';
+      flyingImg.style.width = imgRect.width + 'px';
+      flyingImg.style.height = imgRect.height + 'px';
+      flyingImg.style.transition = 'all 0.9s cubic-bezier(.4,2,.6,1)';
+      flyingImg.style.zIndex = '9999';
+      flyingImg.style.pointerEvents = 'none';
+      document.body.appendChild(flyingImg);
 
+      setTimeout(() => {
+        // Tính tâm icon giỏ hàng
+        const cartCenterX = cartRect.left + cartRect.width / 2;
+        const cartCenterY = cartRect.top + cartRect.height / 2;
+        // Tính tâm ảnh sản phẩm
+        const imgCenterX = imgRect.left + imgRect.width / 2;
+        const imgCenterY = imgRect.top + imgRect.height / 2;
+        // Đích đến là tâm icon, ảnh sẽ thu nhỏ còn 1/4 kích thước ban đầu
+        flyingImg.style.left = cartCenterX - imgRect.width / 8 + 'px';
+        flyingImg.style.top = cartCenterY - imgRect.height / 8 + 'px';
+        flyingImg.style.width = imgRect.width / 4 + 'px';
+        flyingImg.style.height = imgRect.height / 4 + 'px';
+        flyingImg.style.opacity = '0.7';
+      }, 10);
+
+      setTimeout(() => {
+        flyingImg.remove();
+      }, 950);
+    }
     try {
       await api.post('/cart', { productId, quantity: 1 });
-      // Show success message or update cart count
+      // Có thể thêm toast ở đây nếu muốn
     } catch (err) {
       console.error('Error adding to cart:', err);
       // Show error message
@@ -167,7 +202,7 @@ const Products: React.FC = () => {
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
+          {products.map((product: Product, idx: number) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -177,6 +212,7 @@ const Products: React.FC = () => {
               <Link to={`/products/${product.id}`} className="block">
                 <div className="relative aspect-square">
                   <img
+                    ref={el => imgRefs.current[idx] = el}
                     src={
                       product.image_url
                         ? product.image_url.startsWith('http')
@@ -184,7 +220,7 @@ const Products: React.FC = () => {
                           : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${product.image_url.startsWith('/') ? '' : '/uploads/'}${product.image_url}`
                         : '/images/default-cake.jpg'
                     }
-                    alt={product.name}
+                    alt={product.name || ''}
                     className="w-full h-full object-cover"
                   />
                   {product.stock === 0 && (
@@ -203,7 +239,7 @@ const Products: React.FC = () => {
                   ${product.price.toFixed(2)}
                 </span>
                 <button
-                  onClick={() => handleAddToCart(product.id)}
+                  onClick={e => handleAddToCart(product.id, e, imgRefs.current[idx])}
                   disabled={product.stock === 0}
                   className={`px-4 py-2 rounded-lg font-medium ${
                     product.stock === 0

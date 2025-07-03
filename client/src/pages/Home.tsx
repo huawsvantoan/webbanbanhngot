@@ -8,6 +8,10 @@ import { Product } from '../services/productService';
 import { motion } from 'framer-motion';
 import { Icons } from '../components/icons';
 import Banner from '../components/Banner';
+import { CartIconRef } from '../components/Header';
+import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const DEFAULT_CAKE_IMAGE = '/images/default-cake.jpg';
 
@@ -22,6 +26,9 @@ const categoriesData = [
 const Home: React.FC = () => {
   const dispatch = useAppDispatch();
   const { products, loading } = useAppSelector((state: RootState) => state.products);
+  const imgRefs = React.useRef<(HTMLImageElement | null)[]>([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, limit: 8 }));
@@ -65,6 +72,45 @@ const Home: React.FC = () => {
       link: '#',
     },
   ];
+
+  const handleAddToCart = async (productId: number, imgElement: HTMLImageElement | null) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // Animation
+    if (imgElement && CartIconRef.current) {
+      const imgRect = imgElement.getBoundingClientRect();
+      const cartRect = CartIconRef.current.getBoundingClientRect();
+      const flyingImg = imgElement.cloneNode(true) as HTMLImageElement;
+      flyingImg.style.position = 'fixed';
+      flyingImg.style.left = imgRect.left + 'px';
+      flyingImg.style.top = imgRect.top + 'px';
+      flyingImg.style.width = imgRect.width + 'px';
+      flyingImg.style.height = imgRect.height + 'px';
+      flyingImg.style.transition = 'all 0.9s cubic-bezier(.4,2,.6,1)';
+      flyingImg.style.zIndex = '9999';
+      flyingImg.style.pointerEvents = 'none';
+      document.body.appendChild(flyingImg);
+      setTimeout(() => {
+        const cartCenterX = cartRect.left + cartRect.width / 2;
+        const cartCenterY = cartRect.top + cartRect.height / 2;
+        flyingImg.style.left = cartCenterX - imgRect.width / 8 + 'px';
+        flyingImg.style.top = cartCenterY - imgRect.height / 8 + 'px';
+        flyingImg.style.width = imgRect.width / 4 + 'px';
+        flyingImg.style.height = imgRect.height / 4 + 'px';
+        flyingImg.style.opacity = '0.7';
+      }, 10);
+      setTimeout(() => {
+        flyingImg.remove();
+      }, 950);
+    }
+    try {
+      await api.post('/cart', { productId, quantity: 1 });
+    } catch (err) {
+      // ...
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -137,7 +183,7 @@ const Home: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-              {products.slice(0, 4).map((product: Product, index) => (
+              {products.slice(0, 4).map((product: Product, index: number) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -148,8 +194,15 @@ const Home: React.FC = () => {
                 >
                   <div className="relative overflow-hidden">
                     <img
-                      src={product.image_url || DEFAULT_CAKE_IMAGE}
-                      alt={product.name}
+                      ref={el => imgRefs.current[index] = el}
+                      src={
+                        product.image_url
+                          ? product.image_url.startsWith('http')
+                            ? product.image_url
+                            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${product.image_url.startsWith('/') ? '' : '/uploads/'}${product.image_url}`
+                          : DEFAULT_CAKE_IMAGE
+                      }
+                      alt={product.name || ''}
                       className="w-full h-72 object-cover transform group-hover:scale-110 transition-transform duration-700"
                     />
                     <div className="absolute top-4 left-4">
@@ -158,7 +211,10 @@ const Home: React.FC = () => {
                       </span>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <button className="bg-pink-600 text-white rounded-full p-3 hover:bg-pink-700 transition-colors transform hover:scale-110">
+                      <button
+                        className="bg-pink-600 text-white rounded-full p-3 hover:bg-pink-700 transition-colors transform hover:scale-110"
+                        onClick={() => handleAddToCart(product.id, imgRefs.current[index])}
+                      >
                         <Icons.ShoppingCart size={20} />
                       </button>
                       <Link to={`/products/${product.id}`} className="bg-white text-gray-800 rounded-full p-3 hover:bg-gray-200 transition-colors transform hover:scale-110">

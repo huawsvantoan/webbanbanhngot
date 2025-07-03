@@ -8,7 +8,13 @@ const storage = multer.diskStorage({
     cb(null, './uploads/'); // Directory where uploaded files will be stored
   },
   filename: (_req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname); // Unique filename
+    // Đổi tên file: timestamp-originalname-khong-dau
+    const ext = file.originalname.split('.').pop();
+    const base = file.originalname
+      .replace(/\s+/g, '-')         // thay dấu cách bằng dấu gạch ngang
+      .replace(/[^a-zA-Z0-9-_]/g, '') // loại bỏ ký tự đặc biệt
+      .replace(/-+/g, '-');         // loại bỏ nhiều dấu gạch ngang liên tiếp
+    cb(null, `${Date.now()}-${base}.${ext}`);
   },
 });
 

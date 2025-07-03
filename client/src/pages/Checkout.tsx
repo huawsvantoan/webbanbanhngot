@@ -12,7 +12,7 @@ const Checkout: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank' | 'vnpay'>('cod');
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [name, setName] = useState('');
 
@@ -50,6 +50,17 @@ const Checkout: React.FC = () => {
       return;
     }
     try {
+      if (paymentMethod === 'vnpay') {
+        const orderId = 'ORDER_' + Date.now();
+        const amountVND = Math.round(total);
+        const res = await api.post('/payment/vnpay_create', {
+          amount: amountVND,
+          orderId,
+          orderInfo: `Thanh toán đơn hàng Cake Shop - ${name}`,
+        });
+        window.location.href = res.data.paymentUrl;
+        return;
+      }
       let formData: FormData | null = null;
       if (paymentMethod === 'bank' && paymentProof) {
         formData = new FormData();
@@ -85,7 +96,8 @@ const Checkout: React.FC = () => {
     }
   };
 
-  const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const getPriceVND = (price: number) => price < 1000 ? price * 1000 : price;
+  const total = cartItems.reduce((sum, item) => sum + getPriceVND(item.product.price) * item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -101,13 +113,13 @@ const Checkout: React.FC = () => {
                 {cartItems.map(item => (
                   <li key={item.id} className="flex justify-between border-b py-2">
                     <span>{item.product.name} x {item.quantity}</span>
-                    <span>{(item.product.price * item.quantity).toFixed(2)}₫</span>
+                    <span>{(getPriceVND(item.product.price) * item.quantity).toLocaleString()}₫</span>
                   </li>
                 ))}
               </ul>
               <div className="flex justify-between font-bold mt-2">
                 <span>Tổng cộng</span>
-                <span>{total.toFixed(2)}₫</span>
+                <span>{total.toLocaleString()}₫</span>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4">
@@ -152,6 +164,17 @@ const Checkout: React.FC = () => {
                       className="form-radio"
                     />
                     <span className="ml-2">Chuyển khoản ngân hàng</span>
+                  </label>
+                  <label className="inline-flex items-center ml-4">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="vnpay"
+                      checked={paymentMethod === 'vnpay'}
+                      onChange={() => setPaymentMethod('vnpay')}
+                      className="form-radio"
+                    />
+                    <span className="ml-2">Thanh toán qua VNPay (ATM, QR, thẻ...)</span>
                   </label>
                 </div>
                 {paymentMethod === 'bank' && (

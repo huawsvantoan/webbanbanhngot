@@ -8,6 +8,8 @@ import authService from '../../services/authService';
 import { Icons } from '../icons';
 import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 
+export const CartIconRef = React.createRef<HTMLAnchorElement>();
+
 const Header: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -116,7 +118,11 @@ const Header: React.FC = () => {
           </div>
 
           {/* Cart Icon */}
-          <NavLink to="/cart" className="text-gray-700 hover:text-pink-600 relative focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50">
+          <NavLink
+            to="/cart"
+            ref={CartIconRef}
+            className="text-gray-700 hover:text-pink-600 relative focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
+          >
             <Icons.ShoppingCart size={24} />
             {items.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-pink-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">

@@ -19,6 +19,7 @@ import usersRoutes from './src/routes/users';
 import analyticsRoutes from './src/routes/analytics';
 import contactsRoutes from './src/routes/contacts';
 import uploadRoutes from './src/routes/upload';
+import paymentRoutes from './src/routes/payment';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/admin/users', usersRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

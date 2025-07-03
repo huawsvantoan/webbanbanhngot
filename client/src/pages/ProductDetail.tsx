@@ -12,6 +12,12 @@ import { addToCart } from '../features/cart/cartSlice';
 
 const DEFAULT_CAKE_IMAGE = '/images/default-cake.png';
 
+const getImageUrl = (img?: string | null) => {
+  if (!img) return DEFAULT_CAKE_IMAGE;
+  if (img.startsWith('http')) return img;
+  return `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${img.startsWith('/') ? '' : '/uploads/'}${img}`;
+};
+
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,7 +35,7 @@ const ProductDetail: React.FC = () => {
 
   // Mock images for gallery (replace with actual product images)
   const productImages = [
-    product?.image_url || DEFAULT_CAKE_IMAGE,
+    getImageUrl(product?.image_url),
     '/images/product-detail-1.jpg',
     '/images/product-detail-2.jpg',
     '/images/product-detail-3.jpg',
