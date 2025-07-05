@@ -213,12 +213,14 @@ const AdminUsers: React.FC = () => {
                             >
                               Khôi phục
                             </button>
-                            <button
-                              onClick={() => handlePermanentDeleteClick(user)}
-                              className="text-red-700 hover:text-red-900 ml-2"
-                            >
-                              Xóa vĩnh viễn
-                            </button>
+                            {user.role !== 'admin' && (
+                              <button
+                                onClick={() => handlePermanentDeleteClick(user)}
+                                className="text-red-700 hover:text-red-900 ml-2"
+                              >
+                                Xóa vĩnh viễn
+                              </button>
+                            )}
                           </>
                         ) : (
                           <>
@@ -231,12 +233,14 @@ const AdminUsers: React.FC = () => {
                             >
                               Đổi quyền
                             </button>
-                            <button
-                              onClick={() => handleDeleteClick(user)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <Icons.Trash2 size={20} />
-                            </button>
+                            {user.role !== 'admin' && (
+                              <button
+                                onClick={() => handleDeleteClick(user)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Icons.Trash2 size={20} />
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

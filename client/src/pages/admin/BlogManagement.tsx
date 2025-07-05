@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { Icons } from '../../components/icons';
 import { toast } from 'react-hot-toast';
+// @ts-ignore
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 interface BlogPost {
   id: number;
@@ -473,12 +476,13 @@ const AdminBlogManagement: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Nội dung
                       </label>
-                      <textarea
-                        value={formData.content}
-                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                        rows={8}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="Nhập nội dung bài viết"
+                      <CKEditor
+                        editor={ClassicEditor as any}
+                        data={formData.content}
+                        onChange={(event: any, editor: any) => {
+                          const data = editor.getData();
+                          setFormData({ ...formData, content: data });
+                        }}
                       />
                       {formErrors.content && <div className="text-red-500 text-sm mt-1">{formErrors.content}</div>}
                     </div>
