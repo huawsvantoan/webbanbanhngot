@@ -51,7 +51,28 @@ const Checkout: React.FC = () => {
     }
     try {
       if (paymentMethod === 'vnpay') {
-        const orderId = 'ORDER_' + Date.now();
+        const orderData = {
+          shipping_address: address,
+          phone,
+          note,
+          payment_method: paymentMethod,
+          name,
+        };
+        let orderRes;
+        try {
+          orderRes = await api.post('/orders', orderData);
+          console.log('Order response:', orderRes.data);
+        } catch (err) {
+          setError('Không tạo được đơn hàng! Vui lòng kiểm tra lại thông tin.');
+          setLoading(false);
+          return;
+        }
+        const orderId = orderRes.data?.order?.id;
+        if (!orderId) {
+          setError('Không tạo được đơn hàng!');
+          setLoading(false);
+          return;
+        }
         const amountVND = Math.round(total);
         const res = await api.post('/payment/vnpay_create', {
           amount: amountVND,

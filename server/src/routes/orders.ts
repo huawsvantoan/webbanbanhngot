@@ -9,7 +9,7 @@ const router = Router();
 // User-specific order routes (require authentication)
 router.post('/', protect, upload.single('payment_proof'), orderController.createOrder);
 router.get('/my-orders', protect, orderController.getUserOrders);
-router.get('/:id', protect, orderController.getOrderById);
+router.get('/:id', orderController.getOrderById);
 router.put('/:id/status', protect, orderController.updateOrderStatus);
 
 export default router; 
