@@ -23,6 +23,7 @@ import Contact from '../pages/Contact';
 import Checkout from '../pages/Checkout';
 import Blog from '../pages/Blog';
 import BlogDetail from '../pages/BlogDetail';
+import PaymentSuccess from '../pages/PaymentSuccess';
 
 // Protected pages
 import Profile from '../pages/Profile';
@@ -80,6 +81,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:id" element={<BlogDetail />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
 
         {/* Protected routes */}
         <Route

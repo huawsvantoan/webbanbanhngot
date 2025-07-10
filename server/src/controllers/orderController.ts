@@ -36,29 +36,12 @@ export const getAllOrders = asyncHandler(async (_req: Request, res: Response) =>
 });
 
 export const getOrderById = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-    const { id } = req.params;
-    const order = await Order.findById(parseInt(id));
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    // Ensure user can only see their own orders unless they are an admin
-    if (req.user.role !== 'admin' && order.user_id !== req.user.id) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-
-    const orderItems = await Order.getItems(order.id);
-    const fullOrder = { ...order, items: orderItems };
-    return res.status(200).json(fullOrder);
-  } catch (error) {
-    console.error('Error fetching order by ID:', error);
-    return res.status(500).json({ message: 'Error fetching order' });
+  const { id } = req.params;
+  const order = await Order.findById(parseInt(id));
+  if (!order) {
+    return res.status(404).json({ message: 'Order not found' });
   }
+  return res.json(order);
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
