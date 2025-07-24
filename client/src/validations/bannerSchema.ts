@@ -10,7 +10,20 @@ export const bannerSchema = Yup.object({
     .max(255, 'Mô tả tối đa 255 ký tự'),
   image: Yup.string()
     .required('Vui lòng nhập đường dẫn ảnh')
-    .url('Đường dẫn ảnh không hợp lệ'),
+    .test('is-valid-image-path', 'Đường dẫn ảnh không hợp lệ', function(value) {
+      if (!value) return false;
+      
+      // Chấp nhận đường dẫn tương đối bắt đầu bằng /
+      if (value.startsWith('/')) return true;
+      
+      // Chấp nhận URL tuyệt đối
+      if (value.startsWith('http://') || value.startsWith('https://')) return true;
+      
+      // Chấp nhận blob URL (cho preview)
+      if (value.startsWith('blob:')) return true;
+      
+      return false;
+    }),
   button_text: Yup.string()
     .max(30, 'Văn bản nút tối đa 30 ký tự'),
   button_link: Yup.string()

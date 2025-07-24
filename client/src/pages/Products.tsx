@@ -236,7 +236,7 @@ const Products: React.FC = () => {
               </Link>
               <div className="px-4 pb-4 flex items-center justify-between">
                 <span className="text-xl font-bold text-pink-600">
-                  ${product.price.toFixed(2)}
+                  {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                 </span>
                 <button
                   onClick={e => handleAddToCart(product.id, e, imgRefs.current[idx])}

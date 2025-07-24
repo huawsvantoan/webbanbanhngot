@@ -8,17 +8,18 @@ import api from '../services/api';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       navigate('/login');
       return;
     }
+    if (!user) return;
 
     const fetchCartItems = async () => {
       try {
@@ -40,8 +41,8 @@ const Cart: React.FC = () => {
       }
     };
 
-    fetchCartItems();
-  }, [user, navigate]);
+    if (user) fetchCartItems();
+  }, [user, authLoading, navigate]);
 
   const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -155,15 +156,20 @@ const Cart: React.FC = () => {
                         className="flex items-center py-4 border-b border-gray-200 last:border-0"
                       >
                         <img
-                          src={`${process.env.REACT_APP_API_URL}/uploads/${item.product.image_url}`}
+                          src={
+                            item.product.image_url
+                              ? `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/uploads/${item.product.image_url}`
+                              : '/images/default-cake.jpg'
+                          }
                           alt={item.product.name}
                           className="w-24 h-24 object-cover rounded-lg"
+                          onError={(e) => { e.currentTarget.src = '/images/default-cake.jpg'; }}
                         />
                         <div className="ml-4 flex-1">
                           <h3 className="text-lg font-medium text-gray-800">
                             {item.product.name}
                           </h3>
-                          <p className="text-gray-600">${item.product.price.toFixed(2)}</p>
+                          <p className="text-gray-600">{item.product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
                           <div className="mt-2 flex items-center">
                             <button
                               onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
@@ -199,7 +205,7 @@ const Cart: React.FC = () => {
                         </div>
                         <div className="ml-4 text-right">
                           <p className="text-lg font-medium text-gray-800">
-                            ${(item.product.price * item.quantity).toFixed(2)}
+                            {(item.product.price * item.quantity).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                           </p>
                         </div>
                       </motion.div>
@@ -216,7 +222,7 @@ const Cart: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
-                    <span>${calculateSubtotal().toFixed(2)}</span>
+                    <span>{calculateSubtotal().toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -225,7 +231,7 @@ const Cart: React.FC = () => {
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-semibold text-gray-800">
                       <span>Total</span>
-                      <span>${calculateSubtotal().toFixed(2)}</span>
+                      <span>{calculateSubtotal().toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                     </div>
                   </div>
                   <button

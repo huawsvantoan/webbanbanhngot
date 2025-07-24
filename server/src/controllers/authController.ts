@@ -75,7 +75,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       full_name, 
       address, 
       phone,
-      role: role || 'user'
+      role: role || 'user',
+      is_verified: false // luôn là false khi đăng ký mới
     });
     const newUser = await User.findById(userId);
 
@@ -84,24 +85,24 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Gửi email thông báo đăng ký thành công
+    // Sinh token xác thực email (JWT)
+    const verifyToken = jwt.sign(
+      { id: newUser.id, email: newUser.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1d' }
+    );
+    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
+    // Gửi email xác thực
     await sendMail({
       to: email,
-      subject: 'Chào mừng bạn đến với Cake Shop!',
+      subject: 'Xác thực tài khoản Cake Shop!',
       html: `
         <h2>Chào mừng bạn đến với Cake Shop!</h2>
-        <p>Tài khoản của bạn đã được tạo thành công với email: <b>${email}</b></p>
-        <p>Nếu không phải bạn đăng ký, vui lòng liên hệ lại với chúng tôi.</p>
-        <p>Chúc bạn mua sắm vui vẻ!</p>
+        <p>Vui lòng nhấn vào <a href="${verifyUrl}">đây</a> để xác thực email và kích hoạt tài khoản.</p>
+        <p>Nếu không phải bạn đăng ký, vui lòng bỏ qua email này.</p>
       `
     });
-
-    const token = jwt.sign(
-      { id: newUser.id, role: newUser.role }, 
-      process.env.JWT_SECRET || 'your-secret-key', 
-      { expiresIn: '24h' }
-    );
-    res.status(201).json({ message: 'User registered successfully', token, user: newUser });
+    res.status(201).json({ message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.' });
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).json({ message: 'Error registering user' });
@@ -154,6 +155,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     console.log(`Password matched for user: ${user.email}`);
+
+    if (!user.is_verified) {
+      res.status(403).json({ message: 'Tài khoản chưa xác thực email. Vui lòng kiểm tra email để xác thực.' });
+      return;
+    }
 
     const token = jwt.sign(
       { id: user.id, role: user.role }, 
@@ -412,9 +418,43 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       res.status(500).json({ message: 'Không thể cập nhật mật khẩu' });
       return;
     }
+    // Thêm dòng này để xác thực tài khoản luôn sau khi đặt lại mật khẩu
+    await User.update(user.id, { is_verified: true });
+
     await PasswordResetCode.deleteByEmail(email);
     res.json({ message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.' });
   } catch (error) {
     res.status(500).json({ message: 'Có lỗi khi đặt lại mật khẩu. Vui lòng thử lại.' });
+  }
+}; 
+
+// API xác thực email
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string') {
+      res.status(400).json({ message: 'Thiếu token xác thực' });
+      return;
+    }
+    let payload: any;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (err) {
+      res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+      return;
+    }
+    const user = await User.findById(payload.id);
+    if (!user) {
+      res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      return;
+    }
+    if (user.is_verified) {
+      res.status(200).json({ message: 'Tài khoản đã được xác thực trước đó.' });
+      return;
+    }
+    await User.update(user.id, { is_verified: true });
+    res.status(200).json({ message: 'Xác thực email thành công! Bạn có thể đăng nhập.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Có lỗi khi xác thực email.' });
   }
 }; 

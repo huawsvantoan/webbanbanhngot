@@ -12,7 +12,7 @@ const Checkout: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank' | 'vnpay'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'vnpay'>('cod');
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [name, setName] = useState('');
 
@@ -44,11 +44,6 @@ const Checkout: React.FC = () => {
       setLoading(false);
       return;
     }
-    if (paymentMethod === 'bank' && !paymentProof) {
-      setError('Vui lòng upload ảnh chuyển khoản!');
-      setLoading(false);
-      return;
-    }
     try {
       if (paymentMethod === 'vnpay') {
         const orderData = {
@@ -62,36 +57,33 @@ const Checkout: React.FC = () => {
         try {
           orderRes = await api.post('/orders', orderData);
           console.log('Order response:', orderRes.data);
-        } catch (err) {
+        } catch (err: any) {
+          console.error('Error creating order for VNPay:', err.response?.data || err.message);
           setError('Không tạo được đơn hàng! Vui lòng kiểm tra lại thông tin.');
           setLoading(false);
           return;
         }
         const orderId = orderRes.data?.order?.id;
         if (!orderId) {
+          console.error('No order ID returned from server');
           setError('Không tạo được đơn hàng!');
           setLoading(false);
           return;
         }
+        
+        console.log('Creating VNPay payment for order:', orderId, 'amount:', total);
         const amountVND = Math.round(total);
-        const res = await api.post('/payment/vnpay_create', {
+        const res = await api.post('/payment/vnpay/create', {
           amount: amountVND,
           orderId,
           orderInfo: `Thanh toán đơn hàng Cake Shop - ${name}`,
         });
+        
+        console.log('VNPay payment URL created:', res.data.paymentUrl);
         window.location.href = res.data.paymentUrl;
         return;
       }
-      let formData: FormData | null = null;
-      if (paymentMethod === 'bank' && paymentProof) {
-        formData = new FormData();
-        formData.append('shipping_address', address);
-        formData.append('phone', phone);
-        formData.append('note', note);
-        formData.append('payment_method', paymentMethod);
-        formData.append('payment_proof', paymentProof);
-        formData.append('name', name);
-      }
+      // COD
       const orderData = {
         shipping_address: address,
         phone,
@@ -99,13 +91,7 @@ const Checkout: React.FC = () => {
         payment_method: paymentMethod,
         name,
       };
-      if (formData) {
-        await api.post('/orders', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      } else {
-        await api.post('/orders', orderData);
-      }
+      await api.post('/orders', orderData);
       setSuccess('Đặt hàng thành công!');
       setTimeout(() => navigate('/orders'), 1500);
     } catch (err: any) {
@@ -134,13 +120,13 @@ const Checkout: React.FC = () => {
                 {cartItems.map(item => (
                   <li key={item.id} className="flex justify-between border-b py-2">
                     <span>{item.product.name} x {item.quantity}</span>
-                    <span>{(getPriceVND(item.product.price) * item.quantity).toLocaleString()}₫</span>
+                    <span>{(getPriceVND(item.product.price) * item.quantity).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                   </li>
                 ))}
               </ul>
               <div className="flex justify-between font-bold mt-2">
                 <span>Tổng cộng</span>
-                <span>{total.toLocaleString()}₫</span>
+                <span>{total.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4">
@@ -175,17 +161,6 @@ const Checkout: React.FC = () => {
                     />
                     <span className="ml-2">Thanh toán khi nhận hàng (COD)</span>
                   </label>
-                  <label className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="bank"
-                      checked={paymentMethod === 'bank'}
-                      onChange={() => setPaymentMethod('bank')}
-                      className="form-radio"
-                    />
-                    <span className="ml-2">Chuyển khoản ngân hàng</span>
-                  </label>
                   <label className="inline-flex items-center ml-4">
                     <input
                       type="radio"
@@ -198,30 +173,6 @@ const Checkout: React.FC = () => {
                     <span className="ml-2">Thanh toán qua VNPay (ATM, QR, thẻ...)</span>
                   </label>
                 </div>
-                {paymentMethod === 'bank' && (
-                  <>
-                    <div className="mt-2 p-3 bg-gray-100 rounded">
-                      <div><b>Ngân hàng:</b> Vietcombank</div>
-                      <div><b>Số tài khoản:</b> 0123456789</div>
-                      <div><b>Chủ tài khoản:</b> Nguyễn Văn A</div>
-                      <div className="text-xs text-gray-500 mt-1">Vui lòng chuyển khoản và ghi rõ nội dung: "Tên + SĐT đặt hàng"</div>
-                    </div>
-                    <div className="mt-3 mb-2 px-3 py-2 bg-yellow-100 text-yellow-800 rounded border border-yellow-300 font-semibold">
-                      <b>Chú ý:</b> Sau khi chuyển khoản và xác nhận thanh toán, đơn hàng sẽ <u>không thể hủy hoặc hoàn tiền trực tuyến</u>.
-                      Vui lòng kiểm tra kỹ thông tin trước khi đặt hàng!
-                    </div>
-                    <div className="mt-3">
-                      <label className="block mb-1 font-medium">Ảnh chuyển khoản <span className="text-red-500">*</span></label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => setPaymentProof(e.target.files ? e.target.files[0] : null)}
-                        required={paymentMethod === 'bank'}
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                  </>
-                )}
               </div>
               {error && <div className="text-red-600 mb-2">{error}</div>}
               {success && <div className="text-green-600 mb-2">{success}</div>}

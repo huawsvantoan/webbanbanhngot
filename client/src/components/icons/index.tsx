@@ -44,7 +44,10 @@ import {
   FiDollarSign,
   FiUsers,
   FiEye,
-  FiAlertCircle
+  FiAlertCircle,
+  FiUpload,
+  FiImage,
+  FiCheck
 } from 'react-icons/fi';
 import { FaMapPin, FaPhone, FaEnvelope, FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaGoogle } from 'react-icons/fa';
 
@@ -99,4 +102,7 @@ export const Icons = {
   Users: FiUsers as FC<IconBaseProps>,
   Eye: FiEye as FC<IconBaseProps>,
   AlertCircle: FiAlertCircle as FC<IconBaseProps>,
+  Upload: FiUpload as FC<IconBaseProps>,
+  Image: FiImage as FC<IconBaseProps>,
+  Check: FiCheck as FC<IconBaseProps>,
 };

@@ -194,3 +194,86 @@ export const clearCart = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ message: 'Error clearing cart' });
   }
 };
+
+// Cập nhật số lượng cart item theo cart item id
+export const updateCartItemById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    const userId = req.user.id;
+    const { id } = req.params; // cart item id
+    const { quantity } = req.body;
+    if (!id || !quantity || quantity <= 0) {
+      res.status(400).json({ message: 'Cart item ID and quantity are required and must be positive' });
+      return;
+    }
+    // Tìm cart của user
+    const cart = await Cart.findByUserId(userId);
+    if (!cart) {
+      res.status(404).json({ message: 'Cart not found' });
+      return;
+    }
+    // Kiểm tra cart item có thuộc cart này không
+    const cartItems = await Cart.getItems(cart.id);
+    const cartItem = cartItems.find(item => item.id === parseInt(id));
+    if (!cartItem) {
+      res.status(404).json({ message: 'Cart item not found' });
+      return;
+    }
+    // Kiểm tra tồn kho
+    if (cartItem.product.stock < quantity) {
+      res.status(400).json({ message: 'Not enough stock available' });
+      return;
+    }
+    const updated = await Cart.updateItem(parseInt(id), quantity);
+    if (!updated) {
+      res.status(404).json({ message: 'Cart item not found or nothing to update' });
+      return;
+    }
+    res.status(200).json({ message: 'Cart item updated successfully' });
+  } catch (error) {
+    console.error('Error updating cart item by id:', error);
+    res.status(500).json({ message: 'Error updating cart item by id' });
+  }
+};
+
+// Xóa cart item theo cart item id
+export const removeCartItemById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    const userId = req.user.id;
+    const { id } = req.params; // cart item id
+    if (!id) {
+      res.status(400).json({ message: 'Cart item ID is required' });
+      return;
+    }
+    // Tìm cart của user
+    const cart = await Cart.findByUserId(userId);
+    if (!cart) {
+      res.status(404).json({ message: 'Cart not found' });
+      return;
+    }
+    // Kiểm tra cart item có thuộc cart này không
+    const cartItems = await Cart.getItems(cart.id);
+    const cartItem = cartItems.find(item => item.id === parseInt(id));
+    if (!cartItem) {
+      res.status(404).json({ message: 'Cart item not found' });
+      return;
+    }
+    // Xóa cart item
+    const removed = await Cart.removeItemById(parseInt(id));
+    if (!removed) {
+      res.status(404).json({ message: 'Cart item not found or nothing to remove' });
+      return;
+    }
+    res.status(200).json({ message: 'Cart item removed successfully' });
+  } catch (error) {
+    console.error('Error removing cart item by id:', error);
+    res.status(500).json({ message: 'Error removing cart item by id' });
+  }
+};

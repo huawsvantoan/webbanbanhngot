@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { Order, IOrderItem } from '../models/Order';
 import { Cart } from '../models/Cart';
 import { Product } from '../models/Product';
+import { Payment } from '../models/Payment';
 import { asyncHandler } from '../utils/asyncHandler';
+import fetch from 'node-fetch';
 
 export const getUserOrders = asyncHandler(async (req: Request, res: Response) => {
   try {
@@ -41,7 +43,8 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response) => 
   if (!order) {
     return res.status(404).json({ message: 'Order not found' });
   }
-  return res.json(order);
+  const items = await Order.getItems(order.id);
+  return res.json({ ...order, items: items || [] });
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
@@ -52,10 +55,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
 
     const userId = req.user.id;
     const { shipping_address, phone, name, note, payment_method } = req.body;
-    let payment_proof = null;
-    if (req.file) {
-      payment_proof = `/uploads/${req.file.filename}`;
-    }
+    // Xóa xử lý payment_proof, upload file
 
     if (!shipping_address || !phone || !name) {
       return res.status(400).json({ message: 'Vui lòng nhập đầy đủ địa chỉ, số điện thoại và họ tên.' });
@@ -91,6 +91,12 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
       });
     }
 
+    // Chỉ còn 2 phương thức: cod, vnpay
+    let initialStatus: 'pending' | 'processing' = 'pending';
+    if (payment_method === 'vnpay') {
+      initialStatus = 'pending';
+    }
+
     const orderId = await Order.create({
       user_id: userId,
       total_amount,
@@ -99,9 +105,18 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
       name,
       note,
       payment_method: payment_method || 'cod',
-      payment_proof,
-      status: 'pending',
+      payment_proof: null,
+      status: initialStatus,
     }, orderItemsData);
+
+    // Tạo payment record nếu thanh toán VNPAY
+    if (payment_method === 'vnpay') {
+      await Payment.create({
+        order_id: orderId,
+        payment_method: 'vnpay',
+        amount: total_amount
+      });
+    }
 
     await Cart.clearItems(cart.id);
 
@@ -122,6 +137,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
+    
     // Chỉ cho phép user hủy đơn của chính mình khi trạng thái là pending hoặc processing
     if (status === 'cancelled') {
       if (!req.user) {
@@ -135,18 +151,41 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         if (order.status !== 'pending' && order.status !== 'processing') {
           return res.status(400).json({ message: 'Chỉ có thể hủy đơn hàng khi đang chờ xử lý hoặc đang xử lý.' });
         }
-        // Nếu là chuyển khoản và đã upload ảnh chuyển khoản thì không cho hủy
-        if (order.payment_method === 'bank' && order.payment_proof) {
-          return res.status(400).json({ message: 'Đơn hàng đã thanh toán chuyển khoản, không thể hủy. Vui lòng liên hệ shop nếu có vấn đề.' });
+      }
+
+      // Kiểm tra và hoàn tiền VNPAY nếu đã thanh toán
+      if (order.payment_method === 'vnpay') {
+        const payment = await Payment.findByOrderId(orderId);
+        if (payment && payment.status === 'completed') {
+          try {
+            // Gọi API hoàn tiền VNPAY
+            const refundResponse = await fetch(`${req.protocol}://${req.get('host')}/api/payment/vnpay/refund`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers.authorization || ''
+              },
+              body: JSON.stringify({
+                orderId: orderId,
+                reason: note || 'Order cancelled by user'
+              })
+            });
+
+            if (!refundResponse.ok) {
+              console.error('VNPAY refund failed:', await refundResponse.text());
+              return res.status(500).json({ message: 'Không thể hoàn tiền VNPAY. Vui lòng liên hệ admin.' });
+            }
+
+            const refundResult = await refundResponse.json();
+            console.log('VNPAY refund successful:', refundResult);
+          } catch (error) {
+            console.error('Error processing VNPAY refund:', error);
+            return res.status(500).json({ message: 'Lỗi hoàn tiền VNPAY. Vui lòng liên hệ admin.' });
+          }
         }
       }
-      // Nếu là chuyển khoản, trả về thông báo cần liên hệ shop để hoàn tiền (nếu chưa upload ảnh thì vẫn cho hủy)
-      if (order.payment_method === 'bank') {
-        await Order.updateStatus(orderId, status, note);
-        const updatedOrder = await Order.findById(orderId);
-        return res.status(200).json({ message: 'Đơn hàng đã được hủy. Vui lòng liên hệ shop để được hoàn tiền chuyển khoản!', order: updatedOrder });
-      }
     }
+    
     // Các trường hợp khác giữ nguyên logic cũ
     const updated = await Order.updateStatus(orderId, status, note);
     if (!updated) {

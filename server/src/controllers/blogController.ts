@@ -106,8 +106,15 @@ export const createBlogPost = asyncHandler(async (req: Request, res: Response) =
   if (!content || content.trim().length === 0) {
     return res.status(400).json({ message: 'Nội dung không được để trống' });
   }
-  if (image_url && !/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(image_url)) {
-    return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh)' });
+  if (
+    image_url &&
+    !(
+      /^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(image_url) || // URL online
+      /^\/?uploads\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(image_url) || // Đường dẫn uploads local
+      /^[a-zA-Z0-9_\-]+\.(jpg|jpeg|png|webp|gif)$/i.test(image_url) // Tên file đơn giản
+    )
+  ) {
+    return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (phải là URL hoặc file ảnh đã upload)' });
   }
   if (!user_id) {
     return res.status(400).json({ message: 'Không xác định được user_id' });

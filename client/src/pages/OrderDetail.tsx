@@ -152,7 +152,7 @@ const OrderDetail: React.FC = () => {
                   <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-gray-900">${Number(item.price).toFixed(2)}</p>
+                  <p className="font-medium text-gray-900">{Number(item.price).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
                   <p className="text-sm text-gray-600">Tổng: {(Number(item.price) * item.quantity).toLocaleString('vi-VN', {style: 'currency', currency: 'VND'})}</p>
                 </div>
               </div>
@@ -195,7 +195,7 @@ const OrderDetail: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Tạm tính:</span>
-              <span className="font-medium">${Number(order.total_amount).toFixed(2)}</span>
+              <span className="font-medium">{Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Phí vận chuyển:</span>

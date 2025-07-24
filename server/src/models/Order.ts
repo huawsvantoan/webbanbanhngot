@@ -9,8 +9,7 @@ export interface IOrder extends RowDataPacket {
   phone: string;
   name: string; // Họ tên người nhận
   note?: string | null; // Ghi chú đơn hàng
-  payment_method: string; // 'cod' | 'bank'
-  payment_proof: string | null;
+  payment_method: 'cod' | 'vnpay';
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
   created_at: Date;
   updated_at: Date;
@@ -46,10 +45,10 @@ export class Order {
   }
 
   static async create(data: Omit<IOrder, 'id' | 'created_at' | 'updated_at'>, orderItemsData: Omit<IOrderItem, 'id' | 'created_at' | 'updated_at' | 'order_id'>[]): Promise<number> {
-    const { user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status } = data;
+    const { user_id, total_amount, shipping_address, phone, name, note, payment_method, status } = data;
     const [result] = await pool.query<any>(
-      'INSERT INTO orders (user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status]
+      'INSERT INTO orders (user_id, total_amount, shipping_address, phone, name, note, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [user_id, total_amount, shipping_address, phone, name, note, payment_method, status]
     );
     const orderId = result.insertId;
 

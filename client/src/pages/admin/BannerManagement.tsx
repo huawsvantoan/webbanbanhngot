@@ -21,6 +21,17 @@ interface Banner {
   updated_at: string;
 }
 
+// Thư viện ảnh có sẵn
+const imageLibrary = [
+  { name: 'Bánh Kem 1', url: '/images/banner1.avif', category: 'cake' },
+  { name: 'Bánh Kem 2', url: '/images/banner2.avif', category: 'cake' },
+  { name: 'Bánh Kem 3', url: '/images/banner3.avif', category: 'cake' },
+  { name: 'Bánh Kem 4', url: '/images/banner4.avif', category: 'cake' },
+  { name: 'Bánh Kem 5', url: '/images/banner5.avif', category: 'cake' },
+  { name: 'Bánh Mì', url: '/images/banhmi.webp', category: 'bread' },
+  { name: 'Bánh Mặc Định', url: '/images/default-cake.jpg', category: 'default' },
+];
+
 const AdminBannerManagement: React.FC = () => {
   const { isAdmin } = useAuth();
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -30,6 +41,31 @@ const AdminBannerManagement: React.FC = () => {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [bannerToDelete, setBannerToDelete] = useState<Banner | null>(null);
+  // Thêm hàm xử lý upload file đơn giản
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Chỉ chấp nhận file ảnh!');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File ảnh không được lớn hơn 5MB!');
+      return;
+    }
+    
+    try {
+      // Tạo URL tạm thời để preview
+      const imageUrl = URL.createObjectURL(file);
+      formik.setFieldValue('image', imageUrl);
+      toast.success('Upload ảnh thành công!');
+    } catch (error) {
+      toast.error('Upload ảnh thất bại!');
+    }
+  };
 
   // Form state
   const formik = useFormik({
@@ -199,66 +235,58 @@ const AdminBannerManagement: React.FC = () => {
               key={banner.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
+              className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-shadow duration-300 flex flex-col"
             >
-              <div className="relative h-48 bg-gray-200">
+              <div className="relative h-52 bg-gray-100">
                 <img
                   src={banner.image || '/images/default-banner.jpg'}
                   alt={banner.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-t-2xl"
                 />
-                <div className="absolute top-2 right-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent rounded-t-2xl"></div>
+                {/* Badge trạng thái */}
+                <div className="absolute top-3 right-3 flex flex-col items-end gap-2 z-10">
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full shadow-md backdrop-blur-sm ${
                     banner.is_active 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-green-500/90 text-white' 
+                      : 'bg-gray-400/80 text-white'
                   }`}>
                     {banner.is_active ? 'Đang hiển thị' : 'Đã ẩn'}
                   </span>
-                </div>
-                <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                  <span className="px-3 py-1 text-xs font-bold rounded-full bg-pink-500/90 text-white shadow-md backdrop-blur-sm">
                     Vị trí {banner.position}
                   </span>
                 </div>
               </div>
-              
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {banner.title}
-                </h3>
-                <p className="text-sm text-gray-600 mb-2 font-medium">
-                  {banner.subtitle}
-                </p>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {banner.description}
-                </p>
-                
-                {banner.button_text && (
-                  <div className="mb-4">
-                    <span className="text-sm text-gray-500">Nút:</span>
-                    <div className="mt-1">
-                      <span className="inline-block bg-pink-100 text-pink-800 px-3 py-1 rounded text-sm">
+              <div className="p-6 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 mb-1 line-clamp-1">{banner.title}</h3>
+                  <p className="text-sm text-pink-600 mb-1 font-semibold line-clamp-1">{banner.subtitle}</p>
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{banner.description}</p>
+                  {banner.button_text && (
+                    <div className="mb-4">
+                      <span className="text-xs text-gray-500 mr-1">Nút:</span>
+                      <span className="inline-block bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
                         {banner.button_text}
                       </span>
                     </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2">
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => handleEditClick(banner)}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center gap-1 font-semibold shadow-md"
                   >
                     <Icons.FolderOpen size={16} />
                     Sửa
                   </button>
                   <button
                     onClick={() => handleToggleActive(banner)}
-                    className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+                    className={`px-4 py-2 rounded-full font-semibold shadow-md flex items-center justify-center transition-colors duration-200 ${
                       banner.is_active
-                        ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                        : 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                        : 'bg-green-500 text-white hover:bg-green-600'
                     }`}
                   >
                     {banner.is_active ? (
@@ -275,7 +303,7 @@ const AdminBannerManagement: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleDeleteClick(banner)}
-                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                    className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition-colors font-semibold shadow-md flex items-center justify-center"
                   >
                     <Icons.Trash2 size={16} />
                   </button>
@@ -310,152 +338,196 @@ const AdminBannerManagement: React.FC = () => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               >
                 <div className="p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
                     {editingBanner ? 'Edit Banner' : 'Create New Banner'}
-                  </h2>
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowCreateModal(false);
+                        setEditingBanner(null);
+                        resetForm();
+                      }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <Icons.X size={24} />
+                    </button>
+                  </div>
                   
                   <form onSubmit={formik.handleSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tiêu đề
-                      </label>
-                      <input
-                        type="text"
-                          name="title"
-                          value={formik.values.title}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Nhập tiêu đề banner"
-                      />
-                        {formik.touched.title && formik.errors.title && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.title}</div>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Phụ đề
-                      </label>
-                      <input
-                        type="text"
-                          name="subtitle"
-                          value={formik.values.subtitle}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Nhập phụ đề banner"
-                      />
-                        {formik.touched.subtitle && formik.errors.subtitle && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.subtitle}</div>
-                        )}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <textarea
-                          value={formik.values.description}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="Enter banner description"
-                      />
-                        {formik.touched.description && formik.errors.description && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.description}</div>
-                        )}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Đường dẫn ảnh
-                      </label>
-                      <input
-                        type="text"
-                          name="image"
-                          value={formik.values.image}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Nhập đường dẫn ảnh"
-                      />
-                        {formik.touched.image && formik.errors.image && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.image}</div>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Button Text
-                      </label>
-                      <input
-                        type="text"
-                          name="button_text"
-                          value={formik.values.button_text}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="e.g., Shop Now"
-                      />
-                        {formik.touched.button_text && formik.errors.button_text && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.button_text}</div>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Button Link
-                      </label>
-                      <input
-                        type="text"
-                          name="button_link"
-                          value={formik.values.button_link}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="e.g., /products"
-                      />
-                        {formik.touched.button_link && formik.errors.button_link && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.button_link}</div>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Vị trí
-                      </label>
-                      <input
-                        type="number"
-                          name="position"
-                          value={formik.values.position}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        min="1"
-                      />
-                        {formik.touched.position && formik.errors.position && (
-                          <div className="text-red-500 text-sm mt-1">{formik.errors.position}</div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center">
-                      <label className="flex items-center">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Tiêu đề
+                        </label>
                         <input
-                          type="checkbox"
-                            name="is_active"
-                            checked={formik.values.is_active}
+                          type="text"
+                            name="title"
+                            value={formik.values.title}
                             onChange={formik.handleChange}
-                          className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
+                            onBlur={formik.handleBlur}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                            placeholder="Nhập tiêu đề banner"
                         />
-                          <span className="ml-2 text-sm text-gray-700">Đang hiển thị</span>
-                      </label>
-                    </div>
+                          {formik.touched.title && formik.errors.title && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.title}</div>
+                          )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Phụ đề
+                        </label>
+                        <input
+                          type="text"
+                            name="subtitle"
+                            value={formik.values.subtitle}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                            placeholder="Nhập phụ đề banner"
+                        />
+                          {formik.touched.subtitle && formik.errors.subtitle && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.subtitle}</div>
+                          )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Description
+                        </label>
+                        <textarea
+                            name="description"
+                            value={formik.values.description}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          placeholder="Enter banner description"
+                        />
+                          {formik.touched.description && formik.errors.description && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.description}</div>
+                          )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Đường dẫn ảnh
+                        </label>
+                        <div className="space-y-2">
+                          {/* Input đường dẫn */}
+                          <input
+                            type="text"
+                              name="image"
+                              value={formik.values.image}
+                              onChange={formik.handleChange}
+                              onBlur={formik.handleBlur}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                              placeholder="Nhập đường dẫn ảnh"
+                          />
+                          
+                          {/* Nút Upload đơn giản */}
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById('file-upload')?.click()}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                              <Icons.Upload size={16} />
+                              Upload Ảnh
+                            </button>
+                          </div>
+                          
+                          {/* Hidden file input */}
+                          <input
+                            id="file-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleFileUpload(e.target.files[0]);
+                              }
+                            }}
+                          />
+                        </div>
+                          {formik.touched.image && formik.errors.image && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.image}</div>
+                          )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Button Text
+                        </label>
+                        <input
+                          type="text"
+                            name="button_text"
+                            value={formik.values.button_text}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          placeholder="e.g., Shop Now"
+                        />
+                          {formik.touched.button_text && formik.errors.button_text && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.button_text}</div>
+                          )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Vị trí
+                          </label>
+                          <input
+                            type="number"
+                              name="position"
+                              value={formik.values.position}
+                              onChange={formik.handleChange}
+                              onBlur={formik.handleBlur}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                            min="1"
+                          />
+                            {formik.touched.position && formik.errors.position && (
+                              <div className="text-red-500 text-sm mt-1">{formik.errors.position}</div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                                name="is_active"
+                                checked={formik.values.is_active}
+                                onChange={formik.handleChange}
+                              className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
+                            />
+                              <span className="ml-2 text-sm text-gray-700">Đang hiển thị</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Preview ảnh đơn giản */}
+                      {formik.values.image && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Preview Ảnh
+                          </label>
+                          <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                            <img
+                              src={formik.values.image}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = '/images/default-cake.jpg';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   <div className="flex items-center gap-4 mt-6">

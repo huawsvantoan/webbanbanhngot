@@ -62,8 +62,27 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
   if (description && description.length > 255) {
     return res.status(400).json({ message: 'Mô tả không được vượt quá 255 ký tự' });
   }
-  if (image && !/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(image)) {
-    return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh)' });
+  if (image) {
+    // Chấp nhận đường dẫn tương đối bắt đầu bằng /
+    if (image.startsWith('/')) {
+      // Kiểm tra định dạng file hợp lệ
+      if (!/\.(jpg|jpeg|png|webp|gif|avif)$/i.test(image)) {
+        return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (định dạng file không được hỗ trợ)' });
+      }
+    }
+    // Chấp nhận URL tuyệt đối
+    else if (image.startsWith('http://') || image.startsWith('https://')) {
+      if (!/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|avif)$/i.test(image)) {
+        return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (định dạng file không được hỗ trợ)' });
+      }
+    }
+    // Chấp nhận blob URL (cho preview)
+    else if (image.startsWith('blob:')) {
+      // Không cần validate blob URL
+    }
+    else {
+      return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ' });
+    }
   }
 
   const newBanner: Banner = {

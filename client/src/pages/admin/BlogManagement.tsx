@@ -462,12 +462,13 @@ const AdminBlogManagement: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Tóm tắt
                       </label>
-                      <textarea
-                        value={formData.excerpt}
-                        onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="Nhập tóm tắt bài viết"
+                      <CKEditor
+                        editor={ClassicEditor as any}
+                        data={formData.excerpt}
+                        onChange={(event: any, editor: any) => {
+                          const data = editor.getData();
+                          setFormData({ ...formData, excerpt: data });
+                        }}
                       />
                       {formErrors.excerpt && <div className="text-red-500 text-sm mt-1">{formErrors.excerpt}</div>}
                     </div>

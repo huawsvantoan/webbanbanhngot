@@ -25,31 +25,49 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
   const defaultBanners: Banner[] = [
     {
       id: 1,
-      title: 'Welcome to Our Bakery',
-      description: 'Discover our delicious cakes and pastries',
-      image_url: '/images/banner1.jpg',
+      title: 'Bánh Mì Tươi Mỗi Ngày',
+      description: 'Thơm ngon, giòn rụm, giao tận nơi trong 30 phút',
+      image_url: '/images/banner1.avif',
       link_url: '/products',
       is_active: true,
       sort_order: 1
     },
     {
       id: 2,
-      title: 'Special Offers',
-      description: 'Get 20% off on birthday cakes',
-      image_url: '/images/banner2.jpg',
-      link_url: '/products?category=1',
+      title: 'Bánh Kem Nghệ Thuật',
+      description: 'Đặt bánh sinh nhật, cưới hỏi, sự kiện theo yêu cầu',
+      image_url: '/images/banner2.avif',
+      link_url: '/products?category=banh-kem',
       is_active: true,
       sort_order: 2
     },
     {
       id: 3,
-      title: 'Wedding Collection',
-      description: 'Perfect cakes for your special day',
-      image_url: '/images/banner3.jpg',
-      link_url: '/products?category=2',
+      title: 'Combo Ngọt Ngào',
+      description: 'Ưu đãi 20% cho combo bánh ngọt và trà sữa',
+      image_url: '/images/banner3.avif',
+      link_url: '/products?category=combo',
       is_active: true,
       sort_order: 3
-    }
+    },
+    {
+      id: 4,
+      title: 'Bánh Mousse Mát Lạnh',
+      description: 'Thưởng thức mousse trái cây tươi mát, mềm mịn',
+      image_url: '/images/banner4.avif',
+      link_url: '/products?category=mousse',
+      is_active: true,
+      sort_order: 4
+    },
+    {
+      id: 5,
+      title: 'Bánh Ngọt Đặc Sắc',
+      description: 'Khám phá các loại bánh ngọt Pháp, Ý, Nhật...',
+      image_url: '/images/banner5.avif',
+      link_url: '/products?category=banh-ngot',
+      is_active: true,
+      sort_order: 5
+    },
   ];
 
   const activeBanners = banners.length > 0 ? banners.filter(b => b.is_active) : defaultBanners;
@@ -95,48 +113,59 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
   }
 
   return (
-    <div className="relative h-96 md:h-[500px] overflow-hidden bg-gray-100">
+    <div className="relative h-96 md:h-[500px] overflow-hidden bg-gray-100 rounded-2xl shadow-xl">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.5 }}
           className="relative h-full"
         >
           <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-2xl"
             style={{
               backgroundImage: `url(${activeBanners[currentSlide].image_url})`,
             }}
           >
-            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+            {/* Overlay gradient mạnh hơn cho chữ nổi bật trên ảnh thật */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent rounded-2xl"></div>
           </div>
 
           <div className="relative h-full flex items-center">
             <div className="container mx-auto px-4">
-              <div className="max-w-2xl text-white">
+              <div className="max-w-2xl text-white drop-shadow-xl">
+                {/* Badge vị trí */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="inline-block bg-pink-500/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">
+                    {`Vị trí ${activeBanners[currentSlide].sort_order || currentSlide + 1}`}
+                  </span>
+                  {activeBanners[currentSlide].is_active ? (
+                    <span className="inline-block bg-green-500/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">Đang hiển thị</span>
+                  ) : (
+                    <span className="inline-block bg-gray-400/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">Đã ẩn</span>
+                  )}
+                </div>
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-4xl md:text-6xl font-bold mb-4"
+                  className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight drop-shadow-2xl"
+                  style={{ textShadow: '0 6px 32px rgba(0,0,0,0.7)' }}
                 >
                   {activeBanners[currentSlide].title}
                 </motion.h1>
-                
                 {activeBanners[currentSlide].description && (
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="text-lg md:text-xl mb-8 text-gray-200"
+                    className="text-lg md:text-2xl mb-8 text-gray-100 drop-shadow-xl"
                   >
                     {activeBanners[currentSlide].description}
                   </motion.p>
                 )}
-
                 {activeBanners[currentSlide].link_url && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -145,7 +174,7 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
                   >
                     <Link
                       to={activeBanners[currentSlide].link_url!}
-                      className="inline-block bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors duration-200 shadow-lg"
+                      className="inline-block bg-gradient-to-r from-pink-600 to-pink-400 text-white px-10 py-4 rounded-full font-bold text-lg shadow-xl hover:scale-105 hover:from-pink-700 hover:to-pink-500 transition-all duration-200 border-2 border-white/30"
                     >
                       Shop Now
                     </Link>
@@ -162,29 +191,27 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
         <>
           <button
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors duration-200 backdrop-blur-sm"
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-pink-600 p-2 rounded-full transition-colors duration-200 shadow-lg backdrop-blur-sm border border-white/40"
           >
-            <Icons.ChevronLeft className="w-6 h-6" />
+            <Icons.ChevronLeft className="w-7 h-7" />
           </button>
-          
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors duration-200 backdrop-blur-sm"
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-pink-600 p-2 rounded-full transition-colors duration-200 shadow-lg backdrop-blur-sm border border-white/40"
           >
-            <Icons.ChevronRight className="w-6 h-6" />
+            <Icons.ChevronRight className="w-7 h-7" />
           </button>
         </>
       )}
-
       {/* Dots Indicator */}
       {activeBanners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3">
           {activeBanners.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-3 h-3 rounded-full transition-colors duration-200 ${
-                index === currentSlide ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
+              className={`w-4 h-4 rounded-full border-2 border-white transition-all duration-200 ${
+                index === currentSlide ? 'bg-pink-500 scale-110 shadow-lg' : 'bg-white/60 hover:bg-pink-300'
               }`}
             />
           ))}

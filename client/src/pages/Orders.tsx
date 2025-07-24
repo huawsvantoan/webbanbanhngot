@@ -233,7 +233,7 @@ const Orders: React.FC = () => {
                               {new Date(order.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                              ${Number(order.total_amount).toFixed(2)}
+                              {Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span

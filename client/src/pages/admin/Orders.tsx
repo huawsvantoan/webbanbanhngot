@@ -28,7 +28,7 @@ const AdminOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | Order['status']>('all');
-  const [selectedPayment, setSelectedPayment] = useState<'all' | 'cod' | 'bank_paid' | 'bank_unpaid'>('all');
+  const [selectedPayment, setSelectedPayment] = useState<'all' | 'cod' | 'vnpay'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
 
@@ -70,8 +70,7 @@ const AdminOrders: React.FC = () => {
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     let matchesPayment = true;
     if (selectedPayment === 'cod') matchesPayment = order.payment_method === 'cod';
-    if (selectedPayment === 'bank_paid') matchesPayment = order.payment_method === 'bank' && !!order.payment_proof;
-    if (selectedPayment === 'bank_unpaid') matchesPayment = order.payment_method === 'bank' && !order.payment_proof;
+    if (selectedPayment === 'vnpay') matchesPayment = order.payment_method === 'vnpay';
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
@@ -186,8 +185,7 @@ const AdminOrders: React.FC = () => {
             >
               <option value="all">Tất cả thanh toán</option>
               <option value="cod">Thanh toán khi nhận hàng (COD)</option>
-              <option value="bank_paid">Đã chuyển khoản</option>
-              <option value="bank_unpaid">Chờ chuyển khoản</option>
+              <option value="vnpay">Thanh toán qua VNPay</option>
             </select>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
@@ -238,8 +236,8 @@ const AdminOrders: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {order.items_count} items
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${Number(order.total_amount).toFixed(2)}
+                      <td className="px-6 py-4 whitespace-nowrap font-semibold">
+                        {Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -250,14 +248,11 @@ const AdminOrders: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {order.payment_method === 'bank' && order.payment_proof && (
-                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">Đã chuyển khoản</span>
-                        )}
-                        {order.payment_method === 'bank' && !order.payment_proof && (
-                          <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">Chờ chuyển khoản</span>
-                        )}
                         {order.payment_method === 'cod' && (
                           <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-semibold">COD</span>
+                        )}
+                        {order.payment_method === 'vnpay' && (
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">VNPay</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

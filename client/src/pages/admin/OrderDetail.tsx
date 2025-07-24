@@ -162,7 +162,7 @@ const OrderDetail: React.FC = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">${Number(order.total_amount).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">${Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
               <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(order.status)}`}>
                 {order.status === 'pending' && 'Chờ xác nhận'}
                 {order.status === 'processing' && 'Đang xử lý'}
@@ -247,7 +247,7 @@ const OrderDetail: React.FC = () => {
                       <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">${Number(item.price).toFixed(2)}</p>
+                      <p className="font-medium text-gray-900">{Number(item.price).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
                       <p className="text-sm text-gray-600">Tổng: {(Number(item.price) * item.quantity).toLocaleString('vi-VN', {style: 'currency', currency: 'VND'})}</p>
                     </div>
                   </div>
@@ -345,28 +345,17 @@ const OrderDetail: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Phương thức:</span>
                   <span className="font-medium">
-                    {order.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
+                    {order.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'VNPay'}
                   </span>
                 </div>
-                {order.payment_method === 'bank' && order.payment_proof && (
-                  <div>
-                    <span className="text-gray-600">Ảnh xác nhận chuyển khoản:</span>
-                    <img
-                      src={order.payment_proof}
-                      alt="Payment proof"
-                      className="mt-2 mb-2 rounded border-2 border-pink-400 w-40"
-                      style={{ display: 'block' }}
-                    />
-                  </div>
-                )}
-                {order.payment_method === 'bank' && (
-                  <div className="text-green-600 font-medium mt-2">
-                    Khách đã chuyển khoản trước số tiền này.
-                  </div>
-                )}
                 {order.payment_method === 'cod' && (
                   <div className="text-yellow-600 font-medium mt-2">
                     Khách sẽ thanh toán khi nhận hàng (COD).
+                  </div>
+                )}
+                {order.payment_method === 'vnpay' && (
+                  <div className="text-blue-600 font-medium mt-2">
+                    Khách đã thanh toán qua VNPay.
                   </div>
                 )}
               </div>
@@ -376,7 +365,7 @@ const OrderDetail: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tạm tính:</span>
-                  <span className="font-medium">${Number(order.total_amount).toFixed(2)}</span>
+                  <span className="font-medium">{Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Phí vận chuyển:</span>

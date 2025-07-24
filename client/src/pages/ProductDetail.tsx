@@ -199,7 +199,7 @@ const ProductDetail: React.FC = () => {
               </h1>
               <div className="flex items-center gap-4 mb-6">
                 <span className="text-3xl font-bold text-pink-600">
-                  ${product.price.toFixed(2)}
+                  {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                 </span>
                 {product.stock > 0 ? (
                   <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
