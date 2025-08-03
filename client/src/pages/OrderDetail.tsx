@@ -26,6 +26,7 @@ interface Order {
   items: OrderItem[];
   name?: string;
   note?: string;
+  payment_method?: 'cod' | 'vnpay'; // Thêm trường này để nhận biết phương thức thanh toán
 }
 
 const OrderDetail: React.FC = () => {
@@ -136,6 +137,12 @@ const OrderDetail: React.FC = () => {
             {order.status === 'cancelled' && 'Đã hủy'}
             {order.status === 'completed' && 'Hoàn thành'}
           </span>
+          {/* Thông báo nếu đã thanh toán qua VNPAY */}
+          {order.payment_method === 'vnpay' && (order.status === 'pending' || order.status === 'processing') && (
+            <div className="mt-4 bg-yellow-100 text-yellow-800 p-3 rounded font-semibold">
+              Đơn hàng đã được thanh toán qua <span className="font-bold">VNPAY</span>. Nếu bạn muốn hủy và hoàn tiền, vui lòng liên hệ bộ phận hỗ trợ khách hàng. Đơn hàng đã thanh toán không thể tự hủy trên hệ thống.
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Sản phẩm trong đơn</h2>
@@ -209,7 +216,8 @@ const OrderDetail: React.FC = () => {
             </div>
           </div>
         </div>
-        {(order.status === 'pending' || order.status === 'processing') && (
+        {/* Nút hủy đơn hàng */}
+        {(order.status === 'pending' || order.status === 'processing') && order.payment_method !== 'vnpay' && (
           <button
             onClick={() => setShowCancelModal(true)}
             className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"

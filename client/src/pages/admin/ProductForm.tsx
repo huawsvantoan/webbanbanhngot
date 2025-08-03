@@ -22,6 +22,12 @@ const ProductForm: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Các trường mới
+  const [is_featured, setIsFeatured] = useState(false);
+  const [is_hot, setIsHot] = useState(false);
+  const [discount_percent, setDiscountPercent] = useState<string>('');
+  const [original_price, setOriginalPrice] = useState<string>('');
 
   const formik = useFormik({
     initialValues: {
@@ -30,6 +36,10 @@ const ProductForm: React.FC = () => {
       price: '',
       stock: '',
       description: '',
+      is_featured: false,
+      is_hot: false,
+      discount_percent: '',
+      original_price: '',
     },
     validationSchema: productSchema.pick(['name', 'category_id', 'price', 'stock', 'description']),
     enableReinitialize: true,
@@ -39,10 +49,16 @@ const ProductForm: React.FC = () => {
       try {
         const formData = new FormData();
         formData.append('name', values.name);
-        formData.append('description', values.description);
+        formData.append('description', values.description || '');
         formData.append('price', values.price.toString());
         formData.append('category_id', values.category_id.toString());
         formData.append('stock', values.stock.toString());
+        formData.append('is_featured', is_featured.toString());
+        formData.append('is_hot', is_hot.toString());
+        formData.append('discount_percent', (discount_percent || '0').toString());
+        if (original_price && original_price !== '') {
+          formData.append('original_price', original_price.toString());
+        }
         if (image) {
           formData.append('image', image);
         } else if (imageUrl) {
@@ -92,8 +108,16 @@ const ProductForm: React.FC = () => {
             price: product.price ? String(product.price) : '',
             stock: product.stock ? String(product.stock) : '',
             description: product.description || '',
+            is_featured: product.is_featured || false,
+            is_hot: product.is_hot || false,
+            discount_percent: product.discount_percent ? String(product.discount_percent) : '',
+            original_price: product.original_price ? String(product.original_price) : '',
           });
           setImageUrl(product.image_url || null);
+          setIsFeatured(product.is_featured || false);
+          setIsHot(product.is_hot || false);
+          setDiscountPercent(product.discount_percent ? String(product.discount_percent) : '');
+          setOriginalPrice(product.original_price ? String(product.original_price) : '');
         } catch (err: any) {
           setError(err.response?.data?.message || 'Failed to fetch product details');
           toast.error('Failed to fetch product details: ' + (err.response?.data?.message || err.message));
@@ -103,7 +127,7 @@ const ProductForm: React.FC = () => {
       };
       fetchProduct();
     }
-  }, [id, isEditMode]);
+  }, [id, isEditMode, formik]);
 
   if (loading && isEditMode) {
     return (
@@ -215,8 +239,62 @@ const ProductForm: React.FC = () => {
             )}
           </div>
 
+          {/* Các trường mới cho tính năng nổi bật/hot */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={is_featured}
+                  onChange={(e) => setIsFeatured(e.target.checked)}
+                  className="rounded border-gray-300 text-pink-600 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">Sản phẩm nổi bật</span>
+              </label>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={is_hot}
+                  onChange={(e) => setIsHot(e.target.checked)}
+                  className="rounded border-gray-300 text-pink-600 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">Sản phẩm bán chạy (HOT)</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label htmlFor="discount_percent" className="block text-sm font-medium text-gray-700 mb-1">Phần trăm giảm giá (%)</label>
+              <input
+                type="number"
+                id="discount_percent"
+                value={discount_percent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                min="0"
+                max="100"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label htmlFor="original_price" className="block text-sm font-medium text-gray-700 mb-1">Giá gốc (trước khi giảm)</label>
+              <input
+                type="number"
+                id="original_price"
+                value={original_price}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+                step="0.01"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                placeholder="Giá gốc (nếu có giảm giá)"
+              />
+            </div>
+          </div>
+
           <div className="mb-6">
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh sản phẩm</label>
             <input
               type="file"
               id="image"

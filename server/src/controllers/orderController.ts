@@ -3,6 +3,7 @@ import { Order, IOrderItem } from '../models/Order';
 import { Cart } from '../models/Cart';
 import { Product } from '../models/Product';
 import { Payment } from '../models/Payment';
+import { User } from '../models/User';
 import { asyncHandler } from '../utils/asyncHandler';
 import fetch from 'node-fetch';
 
@@ -137,6 +138,12 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
+
+    // Kiểm tra logic ràng buộc trạng thái
+    const statusValidation = validateStatusTransition(order.status, status);
+    if (!statusValidation.allowed) {
+      return res.status(400).json({ message: statusValidation.message });
+    }
     
     // Chỉ cho phép user hủy đơn của chính mình khi trạng thái là pending hoặc processing
     if (status === 'cancelled') {
@@ -186,7 +193,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
       }
     }
     
-    // Các trường hợp khác giữ nguyên logic cũ
+    // Cập nhật trạng thái
     const updated = await Order.updateStatus(orderId, status, note);
     if (!updated) {
       return res.status(404).json({ message: 'Order not found or status not updated' });
@@ -196,5 +203,146 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
   } catch (error) {
     console.error('Error updating order status:', error);
     return res.status(500).json({ message: 'Error updating order status' });
+  }
+});
+
+// Hàm kiểm tra logic chuyển đổi trạng thái
+const validateStatusTransition = (currentStatus: string, newStatus: string) => {
+  // Không thể thay đổi trạng thái đã hoàn thành hoặc đã hủy
+  if (currentStatus === 'completed') {
+    return {
+      allowed: false,
+      message: 'Không thể thay đổi trạng thái đơn hàng đã hoàn thành'
+    };
+  }
+  
+  if (currentStatus === 'cancelled') {
+    return {
+      allowed: false,
+      message: 'Không thể thay đổi trạng thái đơn hàng đã hủy'
+    };
+  }
+
+  // Logic chuyển đổi trạng thái hợp lệ - Admin chỉ có thể tiến hành đơn hàng, không thể hủy
+  const validTransitions: Record<string, string[]> = {
+    pending: ['processing'], // Chỉ có thể chuyển sang đang xử lý
+    processing: ['shipped'], // Chỉ có thể chuyển sang đã giao cho đơn vị vận chuyển
+    shipped: ['delivered'], // Chỉ có thể chuyển sang đã giao hàng
+    delivered: ['completed'], // Chỉ có thể chuyển sang hoàn thành
+    completed: [], // Không thể thay đổi
+    cancelled: [] // Không thể thay đổi
+  };
+
+  const allowedTransitions = validTransitions[currentStatus];
+  if (!allowedTransitions.includes(newStatus)) {
+    const statusLabels: Record<string, string> = {
+      pending: 'Chờ xác nhận',
+      processing: 'Đang xử lý',
+      shipped: 'Đã giao cho đơn vị vận chuyển',
+      delivered: 'Đã giao hàng',
+      completed: 'Hoàn thành',
+      cancelled: 'Đã hủy'
+    };
+    
+    return {
+      allowed: false,
+      message: `Không thể chuyển từ "${statusLabels[currentStatus]}" sang "${statusLabels[newStatus]}"`
+    };
+  }
+
+  return { allowed: true, message: '' };
+};
+
+export const createDirectOrder = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { customer_name, customer_phone, customer_address, products, payment_method, total_amount } = req.body;
+
+    console.log('Received direct order request:', {
+      customer_name,
+      customer_phone,
+      customer_address,
+      products_count: products?.length,
+      payment_method,
+      total_amount
+    });
+
+    if (!customer_name || !customer_phone || !products || products.length === 0) {
+      console.log('Validation failed: missing required fields');
+      return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin khách hàng và sản phẩm.' });
+    }
+
+    // Tạo user tạm thời cho khách hàng trực tiếp
+    const tempUser = {
+      username: `guest_${Date.now()}`,
+      email: `guest_${Date.now()}@direct.com`,
+      password: 'temp_password',
+      full_name: customer_name,
+      phone: customer_phone,
+      address: customer_address || '',
+      role: 'user'
+    };
+
+    // Tạo user trong database
+    const userId = await User.create(tempUser);
+
+    // Kiểm tra stock và tính tổng tiền
+    let calculatedTotal = 0;
+    const orderItemsData = [];
+
+    for (const item of products) {
+      const product = await Product.findById(item.product_id);
+      if (!product) {
+        return res.status(400).json({ message: `Sản phẩm ID ${item.product_id} không tồn tại` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: `Không đủ hàng cho sản phẩm ${product.name}` });
+      }
+      
+      calculatedTotal += item.price * item.quantity;
+      orderItemsData.push({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.price,
+      });
+
+      // Cập nhật stock
+      await Product.update(item.product_id, { stock: product.stock - item.quantity } as Partial<Product>);
+    }
+
+    // Kiểm tra tổng tiền
+    if (Math.abs(calculatedTotal - total_amount) > 1000) { // Cho phép sai số 1000đ
+      return res.status(400).json({ message: 'Tổng tiền không khớp với giá trị sản phẩm' });
+    }
+
+    // Tạo đơn hàng
+    const orderId = await Order.create({
+      user_id: userId,
+      total_amount: calculatedTotal,
+      shipping_address: customer_address || 'Mua trực tiếp tại cửa hàng',
+      phone: customer_phone,
+      name: customer_name,
+      note: 'Đơn hàng tạo trực tiếp tại cửa hàng',
+      payment_method: payment_method || 'cash',
+      status: 'completed', // Đơn hàng trực tiếp thường hoàn thành ngay
+    }, orderItemsData);
+
+    // Tạo payment record nếu thanh toán chuyển khoản
+    if (payment_method === 'transfer') {
+      await Payment.create({
+        order_id: orderId,
+        payment_method: 'transfer',
+        amount: calculatedTotal,
+        transaction_id: `TRANSFER_${Date.now()}`
+      });
+    }
+
+    const newOrder = await Order.findById(orderId);
+    return res.status(201).json({ 
+      message: 'Đơn hàng tạo thành công', 
+      order: newOrder 
+    });
+  } catch (error) {
+    console.error('Error creating direct order:', error);
+    return res.status(500).json({ message: 'Lỗi tạo đơn hàng' });
   }
 });

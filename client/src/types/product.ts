@@ -13,6 +13,14 @@ export interface Product {
   updated_at: string;
   full_name?: string;
   isDeleted: number;
+  // Các trường mới cho tính năng nổi bật/hot
+  is_featured?: boolean;
+  is_hot?: boolean;
+  discount_percent?: number;
+  original_price?: number;
+  view_count?: number;
+  rating_avg?: number;
+  rating_count?: number;
 }
 
 export interface Category {

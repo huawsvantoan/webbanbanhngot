@@ -13,4 +13,7 @@ router.get('/my-orders', protect, orderController.getUserOrders);
 router.get('/:id', getOrderById);
 router.put('/:id/status', protect, orderController.updateOrderStatus);
 
+// Admin routes for direct order creation
+router.post('/create-direct', protect, authorize(['admin']), orderController.createDirectOrder);
+
 export default router; 

@@ -26,11 +26,11 @@ const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | Order['status']>('all');
-  const [selectedPayment, setSelectedPayment] = useState<'all' | 'cod' | 'vnpay'>('all');
+  const [selectedPayment, setSelectedPayment] = useState<'all' | 'cod' | 'vnpay' | 'cash' | 'transfer'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -63,15 +63,13 @@ const AdminOrders: React.FC = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toString().includes(searchTerm) ||
-      order.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user_email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     let matchesPayment = true;
     if (selectedPayment === 'cod') matchesPayment = order.payment_method === 'cod';
     if (selectedPayment === 'vnpay') matchesPayment = order.payment_method === 'vnpay';
-    return matchesSearch && matchesStatus && matchesPayment;
+    if (selectedPayment === 'cash') matchesPayment = order.payment_method === 'cash';
+    if (selectedPayment === 'transfer') matchesPayment = order.payment_method === 'transfer';
+    return matchesStatus && matchesPayment;
   });
 
   // Pagination
@@ -116,6 +114,321 @@ const AdminOrders: React.FC = () => {
     }
   };
 
+  // Create Order Modal Component
+  const CreateOrderModal = () => {
+    const [customerName, setCustomerName] = useState('');
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [customerAddress, setCustomerAddress] = useState('');
+    const [selectedProducts, setSelectedProducts] = useState<Array<{
+      product_id: number | null;
+      name: string;
+      price: number;
+      quantity: number;
+    }>>([]);
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+    const [loading, setLoading] = useState(false);
+    const [products, setProducts] = useState<Array<{
+      id: number;
+      name: string;
+      price: number;
+      stock: number;
+    }>>([]);
+
+    useEffect(() => {
+      fetchProducts();
+    }, []);
+
+    const fetchProducts = async () => {
+      try {
+        const response = await api.get('/products');
+        setProducts(response.data);
+      } catch (error) {
+        toast.error('Không thể tải danh sách sản phẩm');
+      }
+    };
+
+    const addProduct = () => {
+      if (selectedProducts.length < 10) {
+        setSelectedProducts([...selectedProducts, {
+          product_id: null, // Thay đổi từ 0 thành null
+          name: '',
+          price: 0,
+          quantity: 1
+        }]);
+      }
+    };
+
+    const removeProduct = (index: number) => {
+      setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
+    };
+
+    const updateProduct = (index: number, field: string, value: any) => {
+      const updated = [...selectedProducts];
+      if (field === 'product_id') {
+        const product = products.find(p => p.id === value);
+        if (product) {
+          updated[index] = {
+            ...updated[index],
+            product_id: value,
+            name: product.name,
+            price: product.price
+          };
+        }
+      } else if (field === 'quantity' || field === 'price') {
+        // Xử lý NaN cho số
+        const numValue = parseInt(value) || 0;
+        updated[index] = { ...updated[index], [field]: numValue };
+      } else {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+      setSelectedProducts(updated);
+    };
+
+    const totalAmount = selectedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    const handleSubmit = async () => {
+      console.log('Current selected products:', selectedProducts); // Debug log
+      
+      if (!customerName || !customerPhone || selectedProducts.length === 0) {
+        toast.error('Vui lòng điền đầy đủ thông tin');
+        return;
+      }
+
+      if (selectedProducts.some(item => item.product_id === null || item.quantity <= 0)) {
+        console.log('Validation failed - invalid products:', selectedProducts); // Debug log
+        toast.error('Vui lòng chọn sản phẩm và số lượng hợp lệ');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const orderData = {
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address: customerAddress,
+          products: selectedProducts,
+          payment_method: paymentMethod,
+          total_amount: totalAmount
+        };
+
+        console.log('Sending order data:', orderData); // Debug log
+
+        const response = await api.post('/admin/orders/create-direct', orderData);
+        console.log('Order created successfully:', response.data); // Debug log
+        
+        toast.success('Tạo đơn hàng thành công!');
+        setShowCreateModal(false);
+        
+        // Reset form
+        setCustomerName('');
+        setCustomerPhone('');
+        setCustomerAddress('');
+        setSelectedProducts([]);
+        setPaymentMethod('cash');
+        
+        fetchOrders(); // Refresh orders list
+      } catch (error: any) {
+        console.error('Error creating order:', error); // Debug log
+        toast.error(error.response?.data?.message || 'Không thể tạo đơn hàng');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!showCreateModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Tạo đơn hàng mới</h2>
+            <button
+              onClick={() => setShowCreateModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <Icons.X size={24} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tên khách hàng *
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                placeholder="Nhập tên khách hàng"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Số điện thoại *
+              </label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                placeholder="Nhập số điện thoại"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Địa chỉ
+              </label>
+              <input
+                type="text"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                placeholder="Nhập địa chỉ (tùy chọn)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phương thức thanh toán
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'transfer')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="cash">Tiền mặt (Thanh toán ngay)</option>
+                <option value="transfer">Chuyển khoản</option>
+              </select>
+              
+              {/* Hiển thị thông tin bổ sung cho từng phương thức */}
+              <div className="mt-2 text-sm text-gray-600">
+                {paymentMethod === 'cash' && (
+                  <div className="p-2 bg-green-50 rounded border border-green-200">
+                    <p className="text-green-700">💳 <strong>Tiền mặt:</strong> Khách hàng thanh toán ngay tại cửa hàng</p>
+                  </div>
+                )}
+                {paymentMethod === 'transfer' && (
+                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                    <p className="text-blue-700">💳 <strong>Chuyển khoản:</strong> Thanh toán bằng chuyển khoản ngân hàng</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Sản phẩm</h3>
+              <button
+                onClick={addProduct}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                type="button"
+              >
+                <Icons.Plus size={16} />
+                Thêm sản phẩm
+              </button>
+            </div>
+
+            {products.length === 0 && (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <p className="text-gray-500">Đang tải danh sách sản phẩm...</p>
+              </div>
+            )}
+
+            {selectedProducts.map((item, index) => (
+              <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sản phẩm *</label>
+                  <select
+                    value={item.product_id || ''}
+                    onChange={(e) => updateProduct(index, 'product_id', parseInt(e.target.value) || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  >
+                    <option value="">Chọn sản phẩm</option>
+                    {products.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} - {product.price.toLocaleString('vi-VN')} ₫ (Còn: {product.stock})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity || ''}
+                    onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá (₫)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={item.price || ''}
+                    onChange={(e) => updateProduct(index, 'price', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Thành tiền</label>
+                    <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm font-semibold">
+                      {((item.price || 0) * (item.quantity || 0)).toLocaleString('vi-VN')} ₫
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeProduct(index)}
+                    className="text-red-500 hover:text-red-700"
+                    type="button"
+                  >
+                    <Icons.Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {selectedProducts.length === 0 && (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <p className="text-gray-500">Chưa có sản phẩm nào. Hãy click "Thêm sản phẩm" để bắt đầu.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-lg font-semibold text-gray-800">Tổng tiền:</span>
+              <span className="text-2xl font-bold text-pink-600">
+                {(totalAmount || 0).toLocaleString('vi-VN')} ₫
+              </span>
+            </div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                type="button"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={loading || totalAmount <= 0}
+                className="flex-1 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+              >
+                {loading ? 'Đang tạo...' : 'Tạo đơn hàng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -146,25 +459,24 @@ const AdminOrders: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-800">Quản lý đơn hàng</h1>
-          <p className="text-gray-600 mt-2">Xem và quản lý đơn hàng của khách hàng</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">Quản lý đơn hàng</h1>
+              <p className="text-gray-600 mt-2">Xem và quản lý đơn hàng của khách hàng</p>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors flex items-center gap-2"
+            >
+              <Icons.Plus size={20} />
+              Tạo đơn hàng mới
+            </button>
+          </div>
         </motion.div>
 
         {/* Filters */}
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Icons.Search className="text-gray-400" size={20} />
-              </div>
-              <input
-                type="text"
-                placeholder="Search orders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as any)}
@@ -186,6 +498,8 @@ const AdminOrders: React.FC = () => {
               <option value="all">Tất cả thanh toán</option>
               <option value="cod">Thanh toán khi nhận hàng (COD)</option>
               <option value="vnpay">Thanh toán qua VNPay</option>
+              <option value="cash">Tiền mặt</option>
+              <option value="transfer">Chuyển khoản</option>
             </select>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
@@ -253,6 +567,15 @@ const AdminOrders: React.FC = () => {
                         )}
                         {order.payment_method === 'vnpay' && (
                           <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">VNPay</span>
+                        )}
+                        {order.payment_method === 'cash' && (
+                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">Tiền mặt</span>
+                        )}
+                        {order.payment_method === 'transfer' && (
+                          <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">Chuyển khoản</span>
+                        )}
+                        {!['cod', 'vnpay', 'cash', 'transfer'].includes(order.payment_method || '') && order.payment_method && (
+                          <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-semibold">{order.payment_method}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -347,6 +670,9 @@ const AdminOrders: React.FC = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Create Order Modal */}
+      <CreateOrderModal />
     </div>
   );
 };

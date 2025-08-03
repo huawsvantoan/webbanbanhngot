@@ -25,7 +25,20 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
     const includeDeleted = req.query.includeDeleted === 'true';
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
-    const products = await Product.findAll({ includeDeleted, search, categoryId });
+    const featured = req.query.featured !== undefined ? req.query.featured === 'true' : undefined;
+    const hot = req.query.hot !== undefined ? req.query.hot === 'true' : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    
+    const products = await Product.findAll({ 
+      includeDeleted, 
+      search, 
+      categoryId, 
+      featured, 
+      hot, 
+      limit, 
+      offset 
+    });
     res.status(200).json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -41,6 +54,14 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       res.status(404).json({ message: 'Product not found' });
       return;
     }
+    
+    // Tăng lượt xem khi xem chi tiết sản phẩm (bỏ qua lỗi nếu có)
+    try {
+      await Product.incrementViewCount(parseInt(id));
+    } catch (viewError) {
+      console.warn('Failed to increment view count:', viewError);
+    }
+    
     res.status(200).json(product);
   } catch (error) {
     console.error('Error fetching product by ID:', error);
@@ -61,29 +82,66 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
 
 export const createProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, price, category_id, stock } = req.body;
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+    
+    const { 
+      name, 
+      description, 
+      price, 
+      category_id, 
+      stock, 
+      is_featured, 
+      is_hot, 
+      discount_percent, 
+      original_price 
+    } = req.body;
     const image_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const productId = await Product.create({
+    // Validate required fields
+    if (!name || !price || !category_id || !stock) {
+      res.status(400).json({ message: 'Missing required fields: name, price, category_id, stock' });
+      return;
+    }
+
+    const productData = {
       name,
-      description,
+      description: description || '',
       price: parseFloat(price),
       category_id: parseInt(category_id),
-      image_url,
+      image_url: image_url || '/images/default-cake.jpg',
       stock: parseInt(stock),
-    });
+      is_featured: is_featured === 'true' || is_featured === true || false,
+      is_hot: is_hot === 'true' || is_hot === true || false,
+      discount_percent: discount_percent ? parseInt(discount_percent) : 0,
+      original_price: original_price ? parseFloat(original_price) : null,
+    };
+
+    console.log('Product data to create:', productData);
+
+    const productId = await Product.create(productData);
     const newProduct = await Product.findById(productId);
     res.status(201).json({ message: 'Product created successfully', product: newProduct });
   } catch (error) {
     console.error('Error creating product:', error);
-    res.status(500).json({ message: 'Error creating product' });
+    res.status(500).json({ message: 'Error creating product: ' + error.message });
   }
 };
 
 export const updateProduct = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, price, category_id, stock } = req.body;
+    const { 
+      name, 
+      description, 
+      price, 
+      category_id, 
+      stock, 
+      is_featured, 
+      is_hot, 
+      discount_percent, 
+      original_price 
+    } = req.body;
     const productId = parseInt(id);
     const image_url = req.file ? `/uploads/${req.file.filename}` : req.body.image_url; // Keep existing image if no new file
 
@@ -94,13 +152,16 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     if (category_id !== undefined) updateData.category_id = parseInt(category_id);
     if (image_url !== undefined) updateData.image_url = image_url;
     if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (is_featured !== undefined) updateData.is_featured = is_featured === 'true' || is_featured === true;
+    if (is_hot !== undefined) updateData.is_hot = is_hot === 'true' || is_hot === true;
+    if (discount_percent !== undefined) updateData.discount_percent = parseInt(discount_percent);
+    if (original_price !== undefined) updateData.original_price = original_price ? parseFloat(original_price) : undefined;
 
     const updated = await Product.update(productId, updateData);
     if (!updated) {
       res.status(404).json({ message: 'Product not found' });
       return;
     }
-
     const updatedProduct = await Product.findById(productId);
     res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
   } catch (error) {
@@ -146,4 +207,85 @@ export const deleteProductPermanent = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Không tìm thấy sản phẩm để xóa vĩnh viễn' });
   }
   return res.status(200).json({ message: 'Sản phẩm đã được xóa vĩnh viễn' });
+}; 
+
+// Các controller mới cho tính năng nổi bật/hot
+export const getFeaturedProducts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 6;
+    const products = await Product.getFeaturedProducts(limit);
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    // Trả về mảng rỗng thay vì lỗi 500
+    res.status(200).json([]);
+  }
+};
+
+export const getHotProducts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 6;
+    const products = await Product.getHotProducts(limit);
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error fetching hot products:', error);
+    // Trả về mảng rỗng thay vì lỗi 500
+    res.status(200).json([]);
+  }
+};
+
+export const toggleFeatured = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(parseInt(id));
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+    
+    const updated = await Product.update(parseInt(id), { 
+      is_featured: !product.is_featured 
+    } as Partial<IProduct>);
+    
+    if (!updated) {
+      res.status(500).json({ message: 'Failed to update product' });
+      return;
+    }
+    
+    res.status(200).json({ 
+      message: 'Product featured status updated successfully',
+      is_featured: !product.is_featured 
+    });
+  } catch (error) {
+    console.error('Error toggling featured status:', error);
+    res.status(500).json({ message: 'Error updating featured status' });
+  }
+};
+
+export const toggleHot = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(parseInt(id));
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+    
+    const updated = await Product.update(parseInt(id), { 
+      is_hot: !product.is_hot 
+    } as Partial<IProduct>);
+    
+    if (!updated) {
+      res.status(500).json({ message: 'Failed to update product' });
+      return;
+    }
+    
+    res.status(200).json({ 
+      message: 'Product hot status updated successfully',
+      is_hot: !product.is_hot 
+    });
+  } catch (error) {
+    console.error('Error toggling hot status:', error);
+    res.status(500).json({ message: 'Error updating hot status' });
+  }
 }; 

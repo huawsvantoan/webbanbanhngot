@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -41,17 +41,12 @@ interface AnalyticsData {
 }
 
 const Analytics: React.FC = () => {
-  const { isAdmin } = useAuth();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/admin/analytics?range=${timeRange}`);
@@ -63,7 +58,11 @@ const Analytics: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -81,13 +80,15 @@ const Analytics: React.FC = () => {
     value, 
     change, 
     icon: Icon, 
-    color 
+    color,
+    subtitle = ''
   }: {
     title: string;
     value: string | number;
     change: number;
     icon: any;
     color: string;
+    subtitle?: string;
   }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -98,6 +99,7 @@ const Analytics: React.FC = () => {
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
+          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
           <div className="flex items-center gap-1 mt-2">
             {change >= 0 ? (
               <Icons.TrendingUp className="text-green-500" size={16} />
@@ -105,7 +107,7 @@ const Analytics: React.FC = () => {
               <Icons.TrendingDown className="text-red-500" size={16} />
             )}
             <span className={`text-sm ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {change >= 0 ? '+' : ''}{change}% so với kỳ trước
+              {change >= 0 ? '+' : ''}{change.toFixed(1)}% so với kỳ trước
             </span>
           </div>
         </div>
@@ -120,13 +122,26 @@ const Analytics: React.FC = () => {
     data, 
     title, 
     color = 'bg-blue-500',
-    valueKey = 'amount'
+    valueKey = 'amount',
+    emptyMessage = 'Không có dữ liệu'
   }: {
     data: { month?: string; date?: string; amount?: number; count?: number }[];
     title: string;
     color?: string;
     valueKey?: 'amount' | 'count';
+    emptyMessage?: string;
   }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+          <div className="flex items-center justify-center h-32">
+            <p className="text-gray-500">{emptyMessage}</p>
+          </div>
+        </div>
+      );
+    }
+
     const maxValue = Math.max(...data.map(d => d[valueKey] || 0));
     
     return (
@@ -142,8 +157,9 @@ const Analytics: React.FC = () => {
             return (
               <div key={index} className="flex-1 flex flex-col items-center">
                 <div 
-                  className={`w-full ${color} rounded-t transition-all duration-300`}
+                  className={`w-full ${color} rounded-t transition-all duration-300 hover:opacity-80`}
                   style={{ height: `${height}%` }}
+                  title={`${valueKey === 'amount' ? formatCurrency(value) : value}`}
                 />
                 <p className="text-xs text-gray-600 mt-2 text-center">
                   {label}
@@ -173,6 +189,12 @@ const Analytics: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Lỗi</h2>
           <p className="text-gray-600 text-center">{error || 'Không thể tải dữ liệu thống kê'}</p>
+          <button 
+            onClick={fetchAnalytics}
+            className="mt-4 w-full bg-pink-500 text-white py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors"
+          >
+            Thử lại
+          </button>
         </div>
       </div>
     );
@@ -218,6 +240,7 @@ const Analytics: React.FC = () => {
             change={data.revenue.growth}
             icon={Icons.DollarSign}
             color="bg-pink-500"
+            subtitle={`${data.orders.completed} đơn hàng hoàn thành`}
           />
           <StatCard
             title="Tổng đơn hàng"
@@ -225,6 +248,7 @@ const Analytics: React.FC = () => {
             change={data.orders.growth}
             icon={Icons.ShoppingCart}
             color="bg-blue-500"
+            subtitle={`${data.orders.pending} chờ xử lý, ${data.orders.cancelled} đã hủy`}
           />
           <StatCard
             title="Khách hàng mới"
@@ -232,6 +256,7 @@ const Analytics: React.FC = () => {
             change={data.customers.growth}
             icon={Icons.Users}
             color="bg-green-500"
+            subtitle={`${data.customers.total} khách hàng tổng cộng`}
           />
           <StatCard
             title="Sản phẩm"
@@ -239,6 +264,7 @@ const Analytics: React.FC = () => {
             change={0}
             icon={Icons.Package}
             color="bg-purple-500"
+            subtitle={`${data.products.lowStock} sắp hết, ${data.products.outOfStock} hết hàng`}
           />
         </div>
 
@@ -253,14 +279,23 @@ const Analytics: React.FC = () => {
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
               <p className="text-2xl font-bold text-yellow-600">{data.orders.pending}</p>
               <p className="text-sm text-gray-600">Chờ xử lý</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {data.orders.total > 0 ? `${((data.orders.pending / data.orders.total) * 100).toFixed(1)}%` : '0%'}
+              </p>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <p className="text-2xl font-bold text-green-600">{data.orders.completed}</p>
               <p className="text-sm text-gray-600">Đã hoàn thành</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {data.orders.total > 0 ? `${((data.orders.completed / data.orders.total) * 100).toFixed(1)}%` : '0%'}
+              </p>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <p className="text-2xl font-bold text-red-600">{data.orders.cancelled}</p>
               <p className="text-sm text-gray-600">Đã hủy</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {data.orders.total > 0 ? `${((data.orders.cancelled / data.orders.total) * 100).toFixed(1)}%` : '0%'}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -272,12 +307,14 @@ const Analytics: React.FC = () => {
             title="Doanh thu theo tháng"
             color="bg-pink-500"
             valueKey="amount"
+            emptyMessage="Chưa có doanh thu trong thời gian này"
           />
           <SimpleChart
             data={data.orders.monthly}
             title="Đơn hàng theo tháng"
             color="bg-blue-500"
             valueKey="count"
+            emptyMessage="Chưa có đơn hàng trong thời gian này"
           />
         </div>
 
@@ -288,22 +325,29 @@ const Analytics: React.FC = () => {
           className="bg-white rounded-lg shadow-md p-6 mb-8"
         >
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Sản phẩm bán chạy</h2>
-          <div className="space-y-4">
-            {data.products.topSelling.slice(0, 5).map((product, index) => (
-              <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
-                  <div>
-                    <p className="font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-600">Đã bán: {product.sales}</p>
+          {data.products.topSelling.length > 0 ? (
+            <div className="space-y-4">
+              {data.products.topSelling.slice(0, 5).map((product, index) => (
+                <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                    <div>
+                      <p className="font-medium text-gray-900">{product.name}</p>
+                      <p className="text-sm text-gray-600">Đã bán: {product.sales} sản phẩm</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">{formatCurrency(product.revenue)}</p>
+                    <p className="text-xs text-gray-500">Doanh thu</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{formatCurrency(product.revenue)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Chưa có sản phẩm bán chạy</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Category Performance */}
@@ -313,17 +357,33 @@ const Analytics: React.FC = () => {
           className="bg-white rounded-lg shadow-md p-6"
         >
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Hiệu suất danh mục</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.categories.map((category, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium text-gray-900 mb-2">{category.name}</h3>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-600">Sản phẩm: {category.count}</p>
-                  <p className="text-sm text-gray-600">Doanh thu: {formatCurrency(category.revenue)}</p>
+          {data.categories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {data.categories.map((category, index) => (
+                <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-2">{category.name}</h3>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">Sản phẩm: {category.count}</p>
+                    <p className="text-sm text-gray-600">Doanh thu: {formatCurrency(category.revenue)}</p>
+                    {category.revenue > 0 && (
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-pink-500 h-2 rounded-full" 
+                          style={{ 
+                            width: `${Math.min((category.revenue / Math.max(...data.categories.map(c => c.revenue))) * 100, 100)}%` 
+                          }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Chưa có dữ liệu danh mục</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

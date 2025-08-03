@@ -6,6 +6,7 @@ const router = Router();
 
 // Admin order routes (require authentication and admin role)
 router.route('/orders').get(protect, authorize(['admin']), orderController.getAllOrders);
+router.route('/orders/create-direct').post(protect, authorize(['admin']), orderController.createDirectOrder);
 router.route('/orders/:id/status').put(protect, authorize(['admin']), orderController.updateOrderStatus);
 router.route('/orders/:id').get(protect, authorize(['admin']), orderController.getOrderById);
 

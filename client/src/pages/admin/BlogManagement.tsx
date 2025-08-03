@@ -436,120 +436,178 @@ const AdminBlogManagement: React.FC = () => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col"
               >
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                  <h2 className="text-2xl font-bold text-gray-800">
                     {editingPost ? 'Sửa bài viết' : 'Tạo bài viết mới'}
                   </h2>
-                  
-                  <div className="space-y-4">
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setEditingPost(null);
+                      resetForm();
+                    }}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <Icons.X size={24} />
+                  </button>
+                </div>
+
+                {/* Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="space-y-6">
+                    {/* Title */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tiêu đề
+                        Tiêu đề *
                       </label>
                       <input
                         type="text"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-lg"
                         placeholder="Nhập tiêu đề bài viết"
                       />
                       {formErrors.title && <div className="text-red-500 text-sm mt-1">{formErrors.title}</div>}
                     </div>
 
+                    {/* Image Upload */}
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Ảnh bài viết</label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        {formData.image ? (
+                          <div>
+                            <img
+                              src={formData.image.startsWith('/uploads') ? `${process.env.REACT_APP_API_URL}${formData.image}` : formData.image}
+                              alt="Preview"
+                              className="w-full max-w-xs h-48 object-cover rounded mb-4 mx-auto"
+                            />
+                            <button
+                              onClick={() => setFormData({ ...formData, image: '' })}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Xóa ảnh
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <Icons.Image className="mx-auto text-gray-400 mb-2" size={48} />
+                            <p className="text-gray-600 mb-2">Kéo thả ảnh vào đây hoặc click để chọn</p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Excerpt */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Tóm tắt
                       </label>
-                      <CKEditor
-                        editor={ClassicEditor as any}
-                        data={formData.excerpt}
-                        onChange={(event: any, editor: any) => {
-                          const data = editor.getData();
-                          setFormData({ ...formData, excerpt: data });
-                        }}
-                      />
+                      <div className="border border-gray-300 rounded-lg">
+                        <CKEditor
+                          editor={ClassicEditor as any}
+                          data={formData.excerpt}
+                          onChange={(event: any, editor: any) => {
+                            const data = editor.getData();
+                            setFormData({ ...formData, excerpt: data });
+                          }}
+                          config={{
+                            toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
+                          }}
+                        />
+                      </div>
                       {formErrors.excerpt && <div className="text-red-500 text-sm mt-1">{formErrors.excerpt}</div>}
                     </div>
 
+                    {/* Content */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nội dung
+                        Nội dung *
                       </label>
-                      <CKEditor
-                        editor={ClassicEditor as any}
-                        data={formData.content}
-                        onChange={(event: any, editor: any) => {
-                          const data = editor.getData();
-                          setFormData({ ...formData, content: data });
-                        }}
-                      />
+                      <div className="border border-gray-300 rounded-lg">
+                        <CKEditor
+                          editor={ClassicEditor as any}
+                          data={formData.content}
+                          onChange={(event: any, editor: any) => {
+                            const data = editor.getData();
+                            setFormData({ ...formData, content: data });
+                          }}
+                          config={{
+                            toolbar: [
+                              'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                              'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'mediaEmbed', '|',
+                              'undo', 'redo'
+                            ]
+                          }}
+                        />
+                      </div>
                       {formErrors.content && <div className="text-red-500 text-sm mt-1">{formErrors.content}</div>}
                     </div>
 
-                    <div className="mb-4">
-                      <label className="block text-gray-700 font-medium mb-2">Ảnh bài viết</label>
-                      {formData.image && (
-                        <img
-                          src={formData.image.startsWith('/uploads') ? `${process.env.REACT_APP_API_URL}${formData.image}` : formData.image}
-                          alt="Preview"
-                          className="w-32 h-32 object-cover rounded mb-2 border"
+                    {/* Tags and Status Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Tags */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Thẻ (phân cách bằng dấu phẩy)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.tags}
+                          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          placeholder="Nhập các thẻ, cách nhau bởi dấu phẩy"
                         />
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
-                      />
-                    </div>
+                      </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Thẻ (phân cách bằng dấu phẩy)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.tags}
-                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        placeholder="Nhập các thẻ, cách nhau bởi dấu phẩy"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Trạng thái
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as BlogPost['status'] })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                      >
-                        <option value="draft">Bản nháp</option>
-                        <option value="published">Đã đăng</option>
-                        <option value="archived">Đã lưu trữ</option>
-                      </select>
+                      {/* Status */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Trạng thái
+                        </label>
+                        <select
+                          value={formData.status}
+                          onChange={(e) => setFormData({ ...formData, status: e.target.value as BlogPost['status'] })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        >
+                          <option value="draft">Bản nháp</option>
+                          <option value="published">Đã đăng</option>
+                          <option value="archived">Đã lưu trữ</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-4 mt-6">
-                    <button
-                      onClick={editingPost ? handleUpdatePost : handleCreatePost}
-                      className="flex-1 bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors"
-                    >
-                      {editingPost ? 'Cập nhật bài viết' : 'Tạo bài viết'}
-                    </button>
+                {/* Footer - Fixed at bottom */}
+                <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                  <div className="text-sm text-gray-600">
+                    {editingPost ? 'Chỉnh sửa bài viết hiện tại' : 'Tạo bài viết mới cho blog'}
+                  </div>
+                  <div className="flex items-center gap-4">
                     <button
                       onClick={() => {
                         setShowCreateModal(false);
                         setEditingPost(null);
                         resetForm();
                       }}
-                      className="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      Đóng
+                      Hủy
+                    </button>
+                    <button
+                      onClick={editingPost ? handleUpdatePost : handleCreatePost}
+                      className="bg-pink-600 text-white px-8 py-3 rounded-lg hover:bg-pink-700 transition-colors font-medium"
+                    >
+                      {editingPost ? 'Cập nhật bài viết' : 'Tạo bài viết'}
                     </button>
                   </div>
                 </div>

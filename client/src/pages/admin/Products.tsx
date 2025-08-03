@@ -93,6 +93,26 @@ const AdminProducts: React.FC = () => {
     }
   };
 
+  const handleToggleFeatured = async (id: number) => {
+    try {
+      await api.put(`/products/${id}/toggle-featured`);
+      toast.success('Cập nhật trạng thái nổi bật thành công');
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cập nhật trạng thái nổi bật thất bại');
+    }
+  };
+
+  const handleToggleHot = async (id: number) => {
+    try {
+      await api.put(`/products/${id}/toggle-hot`);
+      toast.success('Cập nhật trạng thái bán chạy thành công');
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cập nhật trạng thái bán chạy thất bại');
+    }
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
@@ -180,6 +200,7 @@ const AdminProducts: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
@@ -213,6 +234,37 @@ const AdminProducts: React.FC = () => {
                       }`}>
                         {product.stock} sản phẩm
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleFeatured(product.id)}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
+                              product.is_featured
+                                ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {product.is_featured ? '✓ Nổi bật' : 'Nổi bật'}
+                          </button>
+                          <button
+                            onClick={() => handleToggleHot(product.id)}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
+                              product.is_hot
+                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {product.is_hot ? '🔥 HOT' : 'HOT'}
+                          </button>
+                        </div>
+                        {product.discount_percent && product.discount_percent > 0 && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            -{product.discount_percent}%
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-4">

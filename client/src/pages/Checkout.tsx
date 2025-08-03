@@ -173,6 +173,11 @@ const Checkout: React.FC = () => {
                     <span className="ml-2">Thanh toán qua VNPay (ATM, QR, thẻ...)</span>
                   </label>
                 </div>
+                {paymentMethod === 'vnpay' && (
+                  <div className="mt-2 bg-yellow-100 text-yellow-800 p-2 rounded text-sm font-semibold">
+                    Lưu ý: Đơn hàng thanh toán qua <span className="font-bold">VNPAY</span> sẽ không thể tự hủy trên hệ thống. Nếu muốn hủy và hoàn tiền, vui lòng liên hệ bộ phận hỗ trợ khách hàng.
+                  </div>
+                )}
               </div>
               {error && <div className="text-red-600 mb-2">{error}</div>}
               {success && <div className="text-green-600 mb-2">{success}</div>}
