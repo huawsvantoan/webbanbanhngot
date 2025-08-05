@@ -101,7 +101,7 @@ const Register: React.FC = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-pink-500/90 to-pink-600/90 z-10" />
           <img
-            src="/images/register-banner.jpg"
+                            src="/images/default-cake.jpg"
             alt="Register"
             className="w-full h-full object-cover"
           />

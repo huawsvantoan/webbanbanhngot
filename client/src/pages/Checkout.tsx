@@ -46,6 +46,7 @@ const Checkout: React.FC = () => {
     }
     try {
       if (paymentMethod === 'vnpay') {
+        console.log('VNPay payment method selected');
         const orderData = {
           shipping_address: address,
           phone,

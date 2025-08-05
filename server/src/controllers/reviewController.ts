@@ -86,11 +86,15 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
       product_id: productId,
       rating: rating === undefined ? null : rating,
       content: content || null,
-      parent_id: parent_id || null
+      parent_id: parent_id || null,
+      status: 'pending'
     });
 
     const newReview = await Review.findById(reviewId);
-    return res.status(201).json({ message: 'Đánh giá/bình luận đã được tạo thành công', review: newReview });
+    return res.status(201).json({ 
+      message: 'Đánh giá/bình luận đã được gửi thành công và đang chờ duyệt', 
+      review: newReview 
+    });
   } catch (error) {
     console.error('Lỗi khi tạo đánh giá/bình luận:', error);
     return res.status(500).json({ message: 'Lỗi khi tạo đánh giá/bình luận' });
@@ -216,5 +220,35 @@ export const getReviewById = asyncHandler(async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Lỗi khi lấy đánh giá theo ID:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy đánh giá theo ID' });
+  }
+});
+
+export const updateReviewStatus = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.reviewId);
+    const { status } = req.body;
+
+    if (isNaN(reviewId)) {
+      return res.status(400).json({ message: 'ID đánh giá không hợp lệ' });
+    }
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Trạng thái không hợp lệ' });
+    }
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: 'Không tìm thấy đánh giá' });
+    }
+
+    const success = await Review.updateStatus(reviewId, status);
+    if (!success) {
+      return res.status(500).json({ message: 'Cập nhật trạng thái đánh giá thất bại' });
+    }
+
+    return res.status(200).json({ message: 'Cập nhật trạng thái đánh giá thành công' });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật trạng thái đánh giá:', error);
+    return res.status(500).json({ message: 'Lỗi khi cập nhật trạng thái đánh giá' });
   }
 }); 

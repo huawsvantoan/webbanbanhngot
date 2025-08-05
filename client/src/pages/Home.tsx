@@ -12,6 +12,7 @@ import { CartIconRef } from '../components/Header';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Category } from '../types/category';
 
 const DEFAULT_CAKE_IMAGE = '/images/default-cake.jpg';
 
@@ -32,14 +33,6 @@ interface BlogPost {
   view_count: number;
 }
 
-const categoriesData = [
-  { id: 1, name: 'Bánh Mì', items: 320, icon: Icons.ShoppingBag, bgColor: 'bg-green-100', iconColor: 'text-green-600', percent: '35%' },
-  { id: 2, name: 'Bánh Ngọt', items: 85, icon: Icons.ShoppingCart, bgColor: 'bg-pink-100', iconColor: 'text-pink-600', percent: '20%' },
-  { id: 3, name: 'Bánh Quy', items: 548, icon: Icons.Package, bgColor: 'bg-blue-100', iconColor: 'text-blue-600', percent: '15%' },
-  { id: 4, name: 'Socola', items: 48, icon: Icons.Heart, bgColor: 'bg-purple-100', iconColor: 'text-purple-600', percent: '30%' },
-  { id: 5, name: 'Bánh Tổng Hợp', items: 50, icon: Icons.Gift, bgColor: 'bg-yellow-100', iconColor: 'text-yellow-600', percent: '10%' },
-];
-
 const Home: React.FC = () => {
   const dispatch = useAppDispatch();
   const { products, loading } = useAppSelector((state: RootState) => state.products);
@@ -51,11 +44,80 @@ const Home: React.FC = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogLoading, setBlogLoading] = useState(true);
   const [blogError, setBlogError] = useState<string | null>(null);
+  
+  // State cho categories
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, limit: 8 }));
     fetchBlogPosts();
+    fetchCategories();
   }, [dispatch]);
+
+  // Fetch categories từ API
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await api.get('/categories');
+      setCategories(response.data || []);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      // Fallback to empty array if API fails
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Function để map category style
+  const getCategoryStyle = (categoryName: string) => {
+    const name = categoryName.toLowerCase();
+    if (name.includes('bánh mì') || name.includes('bread')) {
+      return {
+        icon: Icons.ShoppingBag,
+        bgColor: 'bg-green-100',
+        iconColor: 'text-green-600',
+        percent: '35%'
+      };
+    } else if (name.includes('bánh ngọt') || name.includes('sweet')) {
+      return {
+        icon: Icons.ShoppingCart,
+        bgColor: 'bg-pink-100',
+        iconColor: 'text-pink-600',
+        percent: '20%'
+      };
+    } else if (name.includes('bánh quy') || name.includes('cookie')) {
+      return {
+        icon: Icons.Package,
+        bgColor: 'bg-blue-100',
+        iconColor: 'text-blue-600',
+        percent: '15%'
+      };
+    } else if (name.includes('socola') || name.includes('chocolate')) {
+      return {
+        icon: Icons.Heart,
+        bgColor: 'bg-purple-100',
+        iconColor: 'text-purple-600',
+        percent: '30%'
+      };
+    } else if (name.includes('bánh kem') || name.includes('cake')) {
+      return {
+        icon: Icons.Gift,
+        bgColor: 'bg-yellow-100',
+        iconColor: 'text-yellow-600',
+        percent: '25%'
+      };
+    } else {
+      // Default style
+      return {
+        icon: Icons.Package,
+        bgColor: 'bg-gray-100',
+        iconColor: 'text-gray-600',
+        percent: '10%'
+      };
+    }
+  };
 
   // Fetch blog posts từ API
   const fetchBlogPosts = async () => {
@@ -74,7 +136,7 @@ const Home: React.FC = () => {
           title: 'Công thức làm bánh Tiramisu truyền thống',
           content: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
           excerpt: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
-      image: '/images/blog-1.jpg',
+      image: '/images/default-cake.jpg',
           status: 'published',
           author_id: 1,
           author_name: 'Chef Master',
@@ -88,7 +150,7 @@ const Home: React.FC = () => {
           title: 'Bí quyết làm bánh Croissant giòn rụm',
           content: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
           excerpt: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
-      image: '/images/blog-2.jpg',
+      image: '/images/default-cake.jpg',
           status: 'published',
           author_id: 1,
           author_name: 'Chef Master',
@@ -102,7 +164,7 @@ const Home: React.FC = () => {
           title: 'Cách làm bánh kem sinh nhật đẹp mắt',
           content: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
           excerpt: 'Khám phá những bí quyết làm bánh độc đáo và công thức nấu ăn mới nhất từ các chuyên gia ẩm thực hàng đầu.',
-      image: '/images/blog-3.jpg',
+      image: '/images/default-cake.jpg',
           status: 'published',
           author_id: 1,
           author_name: 'Chef Master',
@@ -117,12 +179,20 @@ const Home: React.FC = () => {
     }
   };
 
-  // Helper function để format date
+  // Function để strip HTML tags
+  const stripHtmlTags = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  // Function để format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    return `${day} ${month}`;
+    return date.toLocaleDateString('vi-VN', { 
+      day: 'numeric', 
+      month: 'short' 
+    });
   };
 
   // Helper function để lấy image URL
@@ -220,48 +290,133 @@ const Home: React.FC = () => {
             </p>
           </motion.div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-            {categoriesData.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 50, scale: 0.8 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -10, scale: 1.05 }}
-              >
-                <Link
-                  to={`/products?category=${category.name}`}
-                  className="group block relative"
-                >
-                  <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 p-8 border border-gray-100 hover:border-pink-200 relative overflow-hidden">
-                    {/* Gradient overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-pink-50 to-purple-50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    
-                    {/* Floating elements */}
-                    <div className="absolute top-4 right-4 w-3 h-3 bg-pink-300 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 animate-ping"></div>
-                    <div className="absolute bottom-4 left-4 w-2 h-2 bg-purple-300 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100 animate-ping"></div>
-                    
-                    <div className="relative z-10">
-                      <span className={`absolute top-4 right-4 text-sm font-bold ${category.iconColor} bg-opacity-20 px-3 py-1 rounded-full backdrop-blur-sm`}>
-                    {category.percent}
-                  </span>
-                      
-                      <div className={`w-20 h-20 rounded-3xl ${category.bgColor} flex items-center justify-center mb-6 transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-lg`}>
-                        <category.icon size={40} className={`${category.iconColor} transform group-hover:scale-110 transition-transform duration-500`} />
-                  </div>
-                      
-                      <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-pink-600 transition-colors duration-300">
-                    {category.name}
-                  </h3>
-                      <p className="text-gray-500 text-sm group-hover:text-gray-700 transition-colors duration-300 font-medium">
-                    {category.items} sản phẩm
-                  </p>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+          <div className="relative">
+            {/* Navigation Buttons */}
+            <motion.button
+              onClick={() => {
+                const container = document.getElementById('categories-container');
+                if (container) {
+                  container.scrollBy({ left: -300, behavior: 'smooth' });
+                }
+              }}
+              className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white p-4 rounded-full shadow-2xl hover:shadow-pink-500/25 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm"
+              whileHover={{ scale: 1.1, x: -5 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Icons.ChevronLeft size={28} />
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                const container = document.getElementById('categories-container');
+                if (container) {
+                  container.scrollBy({ left: 300, behavior: 'smooth' });
+                }
+              }}
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm"
+              whileHover={{ scale: 1.1, x: 5 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Icons.ChevronRight size={28} />
+            </motion.button>
+
+            {/* Categories Container */}
+            <div 
+              id="categories-container"
+              className="flex gap-8 overflow-x-auto scrollbar-hide pb-8 px-8"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              {categories.map((category, index) => {
+                const style = getCategoryStyle(category.name);
+                const IconComponent = style.icon;
+                
+                return (
+                  <motion.div
+                    key={category.id}
+                    initial={{ opacity: 0, y: 50, scale: 0.8 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    whileHover={{ y: -15, scale: 1.05, rotateY: 5 }}
+                    className="min-w-[320px] flex-shrink-0 group"
+                  >
+                    <Link
+                      to={`/products?category=${category.id}`}
+                      className="block relative"
+                    >
+                      {/* Main Card */}
+                      <div className="relative bg-gradient-to-br from-white via-pink-50 to-purple-50 rounded-3xl shadow-2xl hover:shadow-pink-500/20 transition-all duration-700 p-8 border border-pink-100 hover:border-pink-300 overflow-hidden transform perspective-1000">
+                        {/* Animated Background Pattern */}
+                        <div className="absolute inset-0 opacity-5">
+                          <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-pink-400 to-purple-400 rounded-full blur-3xl animate-pulse"></div>
+                          <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-2xl animate-pulse delay-1000"></div>
+                        </div>
+                        
+                        {/* Floating Particles */}
+                        <div className="absolute top-4 right-4 w-2 h-2 bg-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 animate-bounce"></div>
+                        <div className="absolute bottom-6 left-6 w-1.5 h-1.5 bg-purple-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 delay-200 animate-bounce"></div>
+                        <div className="absolute top-1/2 left-4 w-1 h-1 bg-yellow-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 delay-400 animate-ping"></div>
+                        
+                        {/* Gradient Border Effect */}
+                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm"></div>
+                        
+                        <div className="relative z-10">
+                          {/* Category Badge */}
+                          <div className="absolute top-4 right-4">
+                            <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${style.iconColor} bg-white/80 backdrop-blur-sm shadow-lg border border-white/50`}>
+                              <span className="w-2 h-2 bg-current rounded-full mr-2 animate-pulse"></span>
+                              {style.percent}
+                            </span>
+                          </div>
+                          
+                          {/* Icon Container */}
+                          <div className="relative mb-8">
+                            <div className={`w-24 h-24 rounded-3xl ${style.bgColor} flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-700 shadow-xl group-hover:shadow-2xl relative overflow-hidden`}>
+                              {/* Icon Background Pattern */}
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-3xl"></div>
+                              <IconComponent size={48} className={`${style.iconColor} transform group-hover:scale-110 transition-transform duration-500 relative z-10`} />
+                              
+                              {/* Glow Effect */}
+                              <div className={`absolute inset-0 rounded-3xl ${style.bgColor.replace('bg-', 'bg-gradient-to-br from-')} opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500`}></div>
+                            </div>
+                            
+                            {/* Decorative Elements */}
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-pink-400 to-purple-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 animate-ping"></div>
+                            <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 delay-200 animate-ping"></div>
+                          </div>
+                          
+                          {/* Category Info */}
+                          <div className="text-center">
+                            <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-pink-600 transition-colors duration-300 relative">
+                              {category.name}
+                              {/* Underline Effect */}
+                              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:w-full transition-all duration-500"></div>
+                            </h3>
+                            
+                            <div className="flex items-center justify-center space-x-2 mb-4">
+                              <div className="w-8 h-0.5 bg-gradient-to-r from-transparent to-pink-300"></div>
+                              <span className="text-gray-500 text-sm font-medium">
+                                {category.product_count || 0} sản phẩm
+                              </span>
+                              <div className="w-8 h-0.5 bg-gradient-to-l from-transparent to-purple-300"></div>
+                            </div>
+                            
+                            {/* Action Button */}
+                            <div className="flex items-center justify-center space-x-2 text-sm font-semibold text-pink-600 group-hover:text-purple-600 transition-colors duration-300">
+                              <span>Khám phá ngay</span>
+                              <Icons.ArrowRight size={16} className="transform group-hover:translate-x-1 transition-transform duration-300" />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Hover Glow Effect */}
+                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -383,9 +538,9 @@ const Home: React.FC = () => {
                       <p className="text-gray-500 text-sm mb-4 font-medium">Category: {product.category_name}</p>
                       <div className="flex justify-center items-center space-x-3">
                         <span className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-                          ${product.price.toFixed(2)}
+                          ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
                         </span>
-                        <span className="text-sm text-gray-400 line-through">${(product.price * 1.15).toFixed(2)}</span>
+                        <span className="text-sm text-gray-400 line-through">${typeof product.price === 'number' ? (product.price * 1.15).toFixed(2) : product.price}</span>
                       </div>
                       
                       {/* Rating stars */}
@@ -405,7 +560,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Banner Section 2 - Enhanced */}
-      <section className="relative bg-cover bg-center py-32 lg:py-40 overflow-hidden" style={{ backgroundImage: 'url(/images/banner2.avif)' }}>
+      <section className="relative bg-cover bg-center py-16 lg:py-20 overflow-hidden" style={{ backgroundImage: 'url(/images/banner2.avif)' }}>
         {/* Enhanced overlay with gradient - lighter for better visibility */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/30 to-black/40"></div>
         
@@ -433,10 +588,10 @@ const Home: React.FC = () => {
               whileInView={{ scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="inline-block mb-8"
+              className="inline-block mb-4"
             >
-              <div className="w-24 h-24 bg-gradient-to-r from-pink-500 to-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl backdrop-blur-sm">
-                <Icons.Gift className="text-white" size={40} />
+              <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-2xl backdrop-blur-sm">
+                <Icons.Gift className="text-white" size={28} />
               </div>
             </motion.div>
             
@@ -445,7 +600,7 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
               viewport={{ once: true }}
-              className="text-5xl lg:text-7xl font-extrabold mb-6 bg-gradient-to-r from-white to-pink-200 bg-clip-text text-transparent drop-shadow-lg"
+              className="text-3xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-white to-pink-200 bg-clip-text text-transparent drop-shadow-lg"
             >
               Bánh Mới Nhất
               <br />
@@ -459,7 +614,7 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-              className="text-xl lg:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed opacity-95 font-medium drop-shadow-md"
+              className="text-sm lg:text-base mb-6 max-w-2xl mx-auto leading-relaxed opacity-95 font-medium drop-shadow-md"
           >
               Khám phá những chiếc bánh ngọt mới nhất được làm thủ công với tình yêu và sự tỉ mỉ, hoàn hảo cho mọi dịp đặc biệt.
           </motion.p>
@@ -469,13 +624,13 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
             viewport={{ once: true }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-3 justify-center items-center"
             >
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
           >
-                <Link to="/products" className="inline-block bg-gradient-to-r from-pink-500 to-purple-500 text-white px-10 py-4 rounded-full font-bold text-lg hover:from-pink-600 hover:to-purple-600 transition-all duration-300 shadow-2xl transform hover:scale-105 backdrop-blur-sm">
+                <Link to="/products" className="inline-block bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2.5 rounded-full font-bold text-sm hover:from-pink-600 hover:to-purple-600 transition-all duration-300 shadow-2xl transform hover:scale-105 backdrop-blur-sm">
               Khám Phá Ngay
             </Link>
               </motion.div>
@@ -484,7 +639,7 @@ const Home: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link to="/about" className="inline-block bg-white/25 backdrop-blur-md text-white px-8 py-4 rounded-full font-semibold hover:bg-white/35 transition-all duration-300 border border-white/40 shadow-lg">
+                <Link to="/about" className="inline-block bg-white/25 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-semibold hover:bg-white/35 transition-all duration-300 border border-white/40 shadow-lg">
                   Tìm Hiểu Thêm
                 </Link>
               </motion.div>
@@ -566,77 +721,77 @@ const Home: React.FC = () => {
       </section>
 
       {/* Baking Process Section */}
-      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+      <section className="py-8 bg-gradient-to-b from-white to-gray-50">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-6"
           >
-            <h2 className="text-4xl font-extrabold text-gray-800 mb-4">Quy Trình Làm Bánh</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">Cam kết chất lượng từ khâu chọn nguyên liệu đến thành phẩm cuối cùng</p>
+            <h2 className="text-2xl font-extrabold text-gray-800 mb-2">Quy Trình Làm Bánh</h2>
+            <p className="text-gray-600 text-sm max-w-2xl mx-auto">Cam kết chất lượng từ khâu chọn nguyên liệu đến thành phẩm cuối cùng</p>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300"
+              className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="text-pink-600 mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Icons.ShoppingBag size={48} className="mx-auto" />
+              <div className="text-pink-600 mb-2 group-hover:scale-110 transition-transform duration-300">
+                <Icons.ShoppingBag size={32} className="mx-auto" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Chọn Nguyên Liệu</h3>
-              <p className="text-gray-600 text-sm">Sử dụng 100% nguyên liệu tươi ngon, bơ Pháp, trứng gà ta, bột mì cao cấp nhập khẩu.</p>
+              <h3 className="text-base font-bold text-gray-800 mb-1">Chọn Nguyên Liệu</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">Sử dụng 100% nguyên liệu tươi ngon, bơ Pháp, trứng gà ta, bột mì cao cấp nhập khẩu.</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300"
+              className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="text-green-600 mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Icons.Heart size={48} className="mx-auto" />
+              <div className="text-green-600 mb-2 group-hover:scale-110 transition-transform duration-300">
+                <Icons.Heart size={32} className="mx-auto" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Làm Bằng Tâm</h3>
-              <p className="text-gray-600 text-sm">Mỗi chiếc bánh được làm thủ công với tình yêu và sự tỉ mỉ, đảm bảo hương vị hoàn hảo.</p>
+              <h3 className="text-base font-bold text-gray-800 mb-1">Làm Bằng Tâm</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">Mỗi chiếc bánh được làm thủ công với tình yêu và sự tỉ mỉ, đảm bảo hương vị hoàn hảo.</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300"
+              className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Icons.Gift size={48} className="mx-auto" />
+              <div className="text-blue-600 mb-2 group-hover:scale-110 transition-transform duration-300">
+                <Icons.Gift size={32} className="mx-auto" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Kiểm Soát Chất Lượng</h3>
-              <p className="text-gray-600 text-sm">Quy trình kiểm tra nghiêm ngặt từ khâu chuẩn bị đến đóng gói, đảm bảo an toàn vệ sinh.</p>
+              <h3 className="text-base font-bold text-gray-800 mb-1">Kiểm Soát Chất Lượng</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">Quy trình kiểm tra nghiêm ngặt từ khâu chuẩn bị đến đóng gói, đảm bảo an toàn vệ sinh.</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300"
+              className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 text-center group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="text-purple-600 mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Icons.Star size={48} className="mx-auto" />
+              <div className="text-purple-600 mb-2 group-hover:scale-110 transition-transform duration-300">
+                <Icons.Star size={32} className="mx-auto" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Giao Hàng Tươi</h3>
-              <p className="text-gray-600 text-sm">Bánh được làm mới mỗi ngày và giao hàng trong vòng 2 giờ để đảm bảo độ tươi ngon.</p>
+              <h3 className="text-base font-bold text-gray-800 mb-1">Giao Hàng Tươi</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">Bánh được làm mới mỗi ngày và giao hàng trong vòng 2 giờ để đảm bảo độ tươi ngon.</p>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* Call to Action Section - Enhanced */}
-      <section className="py-20 bg-cover bg-center text-white relative overflow-hidden" style={{ backgroundImage: 'url(/images/banner3.avif)' }}>
+      <section className="py-12 bg-cover bg-center text-white relative overflow-hidden" style={{ backgroundImage: 'url(/images/banner3.avif)' }}>
         {/* Enhanced overlay with gradient - lighter for better visibility */}
         <div className="absolute inset-0 bg-gradient-to-br from-pink-600/60 via-purple-600/50 to-pink-500/60"></div>
         
@@ -665,10 +820,10 @@ const Home: React.FC = () => {
               whileInView={{ scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="inline-block mb-6"
+              className="inline-block mb-3"
             >
-              <div className="w-16 h-16 bg-white/25 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl border border-white/20">
-                <Icons.ShoppingCart className="text-white" size={28} />
+              <div className="w-12 h-12 bg-white/25 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-xl border border-white/20">
+                <Icons.ShoppingCart className="text-white" size={20} />
               </div>
             </motion.div>
             
@@ -677,7 +832,7 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
               viewport={{ once: true }}
-              className="text-4xl lg:text-5xl font-extrabold mb-4 drop-shadow-lg"
+              className="text-2xl lg:text-3xl font-extrabold mb-2 drop-shadow-lg"
             >
               Khám Phá Hương Vị
               <br />
@@ -691,7 +846,7 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-              className="text-lg lg:text-xl mb-8 max-w-2xl mx-auto opacity-95 leading-relaxed font-medium drop-shadow-md"
+              className="text-sm lg:text-base mb-4 max-w-2xl mx-auto opacity-95 leading-relaxed font-medium drop-shadow-md"
           >
               Thưởng thức những chiếc bánh thơm ngon được làm thủ công với nguyên liệu tươi ngon nhất. Đặt hàng ngay để nhận ưu đãi đặc biệt!
           </motion.p>
@@ -701,13 +856,13 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
             viewport={{ once: true }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-2 justify-center items-center"
             >
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link to="/products" className="inline-block bg-white text-pink-600 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition-all duration-300 shadow-xl transform hover:scale-105 backdrop-blur-sm">
+                <Link to="/products" className="inline-block bg-white text-pink-600 px-5 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition-all duration-300 shadow-xl transform hover:scale-105 backdrop-blur-sm">
                   Xem Sản Phẩm
                 </Link>
               </motion.div>
@@ -716,7 +871,7 @@ const Home: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link to="/contact" className="inline-block bg-white/25 backdrop-blur-md text-white px-6 py-3 rounded-full font-semibold text-base hover:bg-white/35 transition-all duration-300 border border-white/40 shadow-lg">
+                <Link to="/contact" className="inline-block bg-white/25 backdrop-blur-md text-white px-4 py-2 rounded-full font-semibold hover:bg-white/35 transition-all duration-300 border border-white/40 shadow-lg">
                   Liên Hệ
             </Link>
               </motion.div>
@@ -728,9 +883,9 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.7 }}
               viewport={{ once: true }}
-              className="mt-8 inline-block"
+              className="mt-4 inline-block"
             >
-              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-full font-bold text-base shadow-xl animate-pulse backdrop-blur-sm border border-yellow-300/30">
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full font-bold text-xs shadow-xl animate-pulse backdrop-blur-sm border border-yellow-300/30">
                 🎉 Bánh tươi mỗi ngày - Đặt trước 2h!
               </div>
             </motion.div>
@@ -818,10 +973,11 @@ const Home: React.FC = () => {
               >
                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden hover:shadow-3xl transition-all duration-500 border border-gray-100 hover:border-blue-200">
                 <div className="relative overflow-hidden">
-                  <img
+                  <Link to={`/blog/${post.id}`} className="block">
+                    <img
                          src={getImageUrl(post)}
                     alt={post.title}
-                         className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-700"
+                         className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-700 cursor-pointer"
                        />
                        
                        {/* Gradient overlay */}
@@ -843,7 +999,8 @@ const Home: React.FC = () => {
                          >
                            Đọc Ngay
                          </motion.div>
-                  </div>
+                       </div>
+                  </Link>
                 </div>
                      
                      <div className="p-8">
@@ -852,7 +1009,7 @@ const Home: React.FC = () => {
                   </h3>
                        
                        <p className="text-gray-600 text-sm mb-6 line-clamp-3 leading-relaxed">
-                         {post.excerpt}
+                         {stripHtmlTags(post.excerpt)}
                        </p>
                        
                   <Link

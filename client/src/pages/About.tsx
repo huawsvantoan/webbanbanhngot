@@ -25,7 +25,7 @@ const About: React.FC = () => {
             className="order-2 lg:order-1"
           >
             <img 
-              src="/images/about-us.jpg" 
+              src="/images/đầu bếp 1.jpg" 
               alt="About Cake Shop" 
               className="rounded-2xl shadow-xl w-full h-auto max-h-[500px] object-cover"
             />
@@ -101,7 +101,7 @@ const About: React.FC = () => {
               className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100"
             >
               <img 
-                src={`/images/team-${member}.jpg`} // Placeholder images
+                src="/images/default-cake.jpg" // Placeholder images
                 alt={`Team Member ${member}`}
                 className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-pink-100"
               />

@@ -2,100 +2,72 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '../icons';
 import { Link } from 'react-router-dom';
-
-interface Banner {
-  id: number;
-  title: string;
-  description?: string;
-  image_url: string;
-  link_url?: string;
-  is_active: boolean;
-  sort_order: number;
-}
+import { getPublicBanners, Banner as BannerType } from '../../services/bannerService';
 
 interface BannerProps {
-  banners?: Banner[];
+  banners?: BannerType[];
 }
 
-const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
+const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState<BannerType[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<boolean>(false);
 
-  // Mock banners if none provided
-  const defaultBanners: Banner[] = [
-    {
-      id: 1,
-      title: 'Bánh Mì Tươi Mỗi Ngày',
-      description: 'Thơm ngon, giòn rụm, giao tận nơi trong 30 phút',
-      image_url: '/images/banner1.avif',
-      link_url: '/products',
-      is_active: true,
-      sort_order: 1
-    },
-    {
-      id: 2,
-      title: 'Bánh Kem Nghệ Thuật',
-      description: 'Đặt bánh sinh nhật, cưới hỏi, sự kiện theo yêu cầu',
-      image_url: '/images/banner2.avif',
-      link_url: '/products?category=banh-kem',
-      is_active: true,
-      sort_order: 2
-    },
-    {
-      id: 3,
-      title: 'Combo Ngọt Ngào',
-      description: 'Ưu đãi 20% cho combo bánh ngọt và trà sữa',
-      image_url: '/images/banner3.avif',
-      link_url: '/products?category=combo',
-      is_active: true,
-      sort_order: 3
-    },
-    {
-      id: 4,
-      title: 'Bánh Mousse Mát Lạnh',
-      description: 'Thưởng thức mousse trái cây tươi mát, mềm mịn',
-      image_url: '/images/banner4.avif',
-      link_url: '/products?category=mousse',
-      is_active: true,
-      sort_order: 4
-    },
-    {
-      id: 5,
-      title: 'Bánh Ngọt Đặc Sắc',
-      description: 'Khám phá các loại bánh ngọt Pháp, Ý, Nhật...',
-      image_url: '/images/banner5.avif',
-      link_url: '/products?category=banh-ngot',
-      is_active: true,
-      sort_order: 5
-    },
-  ];
-
-  const activeBanners = banners.length > 0 ? banners.filter(b => b.is_active) : defaultBanners;
-
+  // Fetch banners from API
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    const fetchBanners = async () => {
+      try {
+        setLoading(true);
+        const data = await getPublicBanners();
+        setBanners(data);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching banners:', err);
+        setError(err.response?.data?.message || 'Không thể tải banners');
+        // Fallback to empty array if API fails
+        setBanners([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    // If banners are provided as props, use them; otherwise fetch from API
+    if (propBanners && propBanners.length > 0) {
+      setBanners(propBanners);
+      setLoading(false);
+    } else {
+      fetchBanners();
+    }
+  }, [propBanners]);
+
+  // Auto-slide effect
   useEffect(() => {
-    if (activeBanners.length <= 1) return;
+    if (banners.length <= 1) return;
 
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
+      setCurrentSlide((prev) => (prev + 1) % banners.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeBanners.length]);
+  }, [banners.length]);
+
+  // Reset image error when slide changes
+  useEffect(() => {
+    setImageError(false);
+  }, [currentSlide]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
 
   const goToPrevious = () => {
-    setCurrentSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length);
+    setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
   const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
+    setCurrentSlide((prev) => (prev + 1) % banners.length);
   };
 
   if (loading) {
@@ -108,7 +80,7 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
     );
   }
 
-  if (activeBanners.length === 0) {
+  if (banners.length === 0) {
     return null;
   }
 
@@ -123,30 +95,31 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
           transition={{ duration: 0.5 }}
           className="relative h-full"
         >
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-2xl"
-            style={{
-              backgroundImage: `url(${activeBanners[currentSlide].image_url})`,
-            }}
-          >
-            {/* Overlay gradient mạnh hơn cho chữ nổi bật trên ảnh thật */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent rounded-2xl"></div>
-          </div>
+                     <div
+             className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-2xl"
+             style={{
+               backgroundImage: imageError 
+                 ? 'url(/images/default-cake.jpg)' 
+                 : `url(${banners[currentSlide].image_url})`,
+             }}
+           >
+                         {/* Overlay gradient mạnh hơn cho chữ nổi bật trên ảnh thật */}
+             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent rounded-2xl"></div>
+             
+             {/* Hidden image to check for errors */}
+             <img
+               src={banners[currentSlide].image_url}
+               alt=""
+               className="hidden"
+               onError={() => setImageError(true)}
+               onLoad={() => setImageError(false)}
+             />
+           </div>
 
           <div className="relative h-full flex items-center">
             <div className="container mx-auto px-4">
               <div className="max-w-2xl text-white drop-shadow-xl">
-                {/* Badge vị trí */}
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="inline-block bg-pink-500/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">
-                    {`Vị trí ${activeBanners[currentSlide].sort_order || currentSlide + 1}`}
-                  </span>
-                  {activeBanners[currentSlide].is_active ? (
-                    <span className="inline-block bg-green-500/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">Đang hiển thị</span>
-                  ) : (
-                    <span className="inline-block bg-gray-400/80 text-xs font-semibold px-3 py-1 rounded-full shadow-md backdrop-blur-sm">Đã ẩn</span>
-                  )}
-                </div>
+
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -154,32 +127,19 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
                   className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight drop-shadow-2xl"
                   style={{ textShadow: '0 6px 32px rgba(0,0,0,0.7)' }}
                 >
-                  {activeBanners[currentSlide].title}
+                  {banners[currentSlide].title}
                 </motion.h1>
-                {activeBanners[currentSlide].description && (
+                {banners[currentSlide].description && (
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="text-lg md:text-2xl mb-8 text-gray-100 drop-shadow-xl"
+                    className="text-lg md:text-2xl text-gray-100 drop-shadow-xl"
                   >
-                    {activeBanners[currentSlide].description}
+                    {banners[currentSlide].description}
                   </motion.p>
                 )}
-                {activeBanners[currentSlide].link_url && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <Link
-                      to={activeBanners[currentSlide].link_url!}
-                      className="inline-block bg-gradient-to-r from-pink-600 to-pink-400 text-white px-10 py-4 rounded-full font-bold text-lg shadow-xl hover:scale-105 hover:from-pink-700 hover:to-pink-500 transition-all duration-200 border-2 border-white/30"
-                    >
-                      Shop Now
-                    </Link>
-                  </motion.div>
-                )}
+
               </div>
             </div>
           </div>
@@ -187,7 +147,7 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
       </AnimatePresence>
 
       {/* Navigation Arrows */}
-      {activeBanners.length > 1 && (
+      {banners.length > 1 && (
         <>
           <button
             onClick={goToPrevious}
@@ -204,9 +164,9 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
         </>
       )}
       {/* Dots Indicator */}
-      {activeBanners.length > 1 && (
+      {banners.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3">
-          {activeBanners.map((_, index) => (
+          {banners.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}

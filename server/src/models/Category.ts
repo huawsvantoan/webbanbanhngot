@@ -73,4 +73,12 @@ export class Category {
   static async deletePermanent(id: number): Promise<any> {
     return pool.query('DELETE FROM categories WHERE id = ?', [id]);
   }
+
+  static async softDeleteProductsInCategory(categoryId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+      'UPDATE products SET isDeleted = 1 WHERE category_id = ? AND isDeleted = 0', 
+      [categoryId]
+    );
+    return result.affectedRows > 0;
+  }
 } 

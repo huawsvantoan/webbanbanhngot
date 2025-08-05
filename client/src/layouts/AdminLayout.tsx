@@ -22,16 +22,16 @@ const AdminLayout: React.FC = () => {
   };
 
   const navItems = [
-    { path: '/admin', label: 'Dashboard', icon: Icons.TrendingUp },
-    { path: '/admin/analytics', label: 'Analytics', icon: Icons.BarChart3 },
-    { path: '/admin/products', label: 'Products', icon: Icons.Package },
-    { path: '/admin/categories', label: 'Categories', icon: Icons.FolderOpen },
-    { path: '/admin/orders', label: 'Orders', icon: Icons.ShoppingCart },
-    { path: '/admin/users', label: 'Users', icon: Icons.User },
-    { path: '/admin/reviews', label: 'Reviews', icon: Icons.MessageSquare },
-    { path: '/admin/banners', label: 'Banners', icon: Icons.Gift },
-    { path: '/admin/blog', label: 'Blog', icon: Icons.MessageSquare },
-    { path: '/admin/contacts', label: 'Contacts', icon: Icons.Mail },
+    { path: '/admin', label: 'Bảng Điều Khiển', icon: Icons.TrendingUp },
+    { path: '/admin/analytics', label: 'Phân Tích', icon: Icons.BarChart3 },
+    { path: '/admin/products', label: 'Sản Phẩm', icon: Icons.Package },
+    { path: '/admin/categories', label: 'Danh Mục', icon: Icons.FolderOpen },
+    { path: '/admin/orders', label: 'Đơn Hàng', icon: Icons.ShoppingCart },
+    { path: '/admin/users', label: 'Người Dùng', icon: Icons.User },
+    { path: '/admin/reviews', label: 'Đánh Giá', icon: Icons.MessageSquare },
+    { path: '/admin/banners', label: 'Banner', icon: Icons.Gift },
+    { path: '/admin/blog', label: 'Bài Viết', icon: Icons.MessageSquare },
+    { path: '/admin/contacts', label: 'Liên Hệ', icon: Icons.Mail },
   ];
 
   return (
@@ -39,9 +39,9 @@ const AdminLayout: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-pink-600">Admin Panel</h1>
+          <h1 className="text-2xl font-bold text-pink-600">Bảng Quản Trị</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Welcome back, {user?.full_name || user?.username || user?.email}
+            Chào mừng trở lại, {user?.full_name || user?.username || user?.email}
           </p>
         </div>
 
@@ -72,7 +72,7 @@ const AdminLayout: React.FC = () => {
               className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
             >
               <Icons.ArrowLeft className="mr-3" size={20} />
-              Logout
+              Đăng Xuất
             </button>
           </div>
         </div>

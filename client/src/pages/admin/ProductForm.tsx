@@ -91,7 +91,7 @@ const ProductForm: React.FC = () => {
         const response = await api.get('/categories');
         setCategories(response.data);
       } catch (err: any) {
-        toast.error('Failed to fetch categories: ' + (err.response?.data?.message || err.message));
+        toast.error('Không thể tải danh mục: ' + (err.response?.data?.message || err.message));
       }
     };
     fetchCategories();
@@ -119,15 +119,15 @@ const ProductForm: React.FC = () => {
           setDiscountPercent(product.discount_percent ? String(product.discount_percent) : '');
           setOriginalPrice(product.original_price ? String(product.original_price) : '');
         } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to fetch product details');
-          toast.error('Failed to fetch product details: ' + (err.response?.data?.message || err.message));
+          setError(err.response?.data?.message || 'Không thể tải thông tin sản phẩm');
+          toast.error('Không thể tải thông tin sản phẩm: ' + (err.response?.data?.message || err.message));
         } finally {
           setLoading(false);
         }
       };
       fetchProduct();
     }
-  }, [id, isEditMode, formik]);
+  }, [id, isEditMode]);
 
   if (loading && isEditMode) {
     return (
@@ -144,12 +144,12 @@ const ProductForm: React.FC = () => {
           <button onClick={() => navigate('/admin/products')} className="text-gray-600 hover:text-gray-900 mr-4">
             <Icons.ArrowLeft size={24} />
           </button>
-          <h1 className="text-3xl font-bold text-gray-800">{isEditMode ? 'Edit Product' : 'Add New Product'}</h1>
+          <h1 className="text-3xl font-bold text-gray-800">{isEditMode ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới'}</h1>
         </div>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong className="font-bold">Error!</strong>
+            <strong className="font-bold">Lỗi!</strong>
             <span className="block sm:inline"> {error}</span>
           </div>
         )}
@@ -304,14 +304,14 @@ const ProductForm: React.FC = () => {
             />
             {(imageUrl && !image) && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Current Image:</p>
-                <img src={imageUrl} alt="Current Product" className="h-32 w-32 object-cover rounded-lg shadow-md" />
+                <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
+                <img src={imageUrl} alt="Ảnh sản phẩm hiện tại" className="h-32 w-32 object-cover rounded-lg shadow-md" />
               </div>
             )}
             {image && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">New Image Preview:</p>
-                <img src={URL.createObjectURL(image)} alt="New Product Preview" className="h-32 w-32 object-cover rounded-lg shadow-md" />
+                <p className="text-sm text-gray-600 mb-2">Xem trước ảnh mới:</p>
+                <img src={URL.createObjectURL(image)} alt="Xem trước ảnh sản phẩm mới" className="h-32 w-32 object-cover rounded-lg shadow-md" />
               </div>
             )}
           </div>
@@ -322,7 +322,7 @@ const ProductForm: React.FC = () => {
               disabled={loading}
               className="bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : (isEditMode ? 'Update Product' : 'Add Product')}
+              {loading ? 'Đang lưu...' : (isEditMode ? 'Cập Nhật Sản Phẩm' : 'Thêm Sản Phẩm')}
             </button>
           </div>
         </form>

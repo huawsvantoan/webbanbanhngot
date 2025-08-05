@@ -50,6 +50,13 @@ const Blog: React.FC = () => {
     });
   };
 
+  // Function để strip HTML tags
+  const stripHtmlTags = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
   // Helper function để lấy image URL
   const getImageUrl = (post: BlogPost) => {
     if (post.image_url) {
@@ -179,7 +186,7 @@ const Blog: React.FC = () => {
                         </h2>
                         
                         <p className="text-gray-600 text-sm mb-6 line-clamp-3 leading-relaxed">
-                          {post.excerpt || createExcerpt(post.content)}
+                          {stripHtmlTags(post.excerpt || createExcerpt(post.content))}
                         </p>
                         
                         <div className="flex items-center justify-between text-sm text-gray-500">
@@ -187,12 +194,6 @@ const Blog: React.FC = () => {
                             <Icons.Clock className="mr-1" size={14} />
                             {formatDate(post.created_at)}
                           </span>
-                          {post.view_count && (
-                            <span className="flex items-center">
-                              <Icons.Eye className="mr-1" size={14} />
-                              {post.view_count}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>

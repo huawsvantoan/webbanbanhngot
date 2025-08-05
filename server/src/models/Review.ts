@@ -8,6 +8,7 @@ export interface IReview extends RowDataPacket {
   rating: number | null; // Allow null for comments
   content?: string; // Renamed from comment
   parent_id?: number | null; // For replies
+  status?: 'pending' | 'approved' | 'rejected';
   created_at: Date;
   updated_at: Date;
 }
@@ -27,8 +28,18 @@ export class Review {
     return rows[0] || null;
   }
 
-  static async findAll(): Promise<IReview[]> {
-    const [rows] = await pool.query<IReview[]>('SELECT * FROM reviews');
+  static async findAll(): Promise<any[]> {
+    const [rows] = await pool.query<any[]>(`
+      SELECT 
+        r.*,
+        u.username as user_name,
+        p.name as product_name,
+        p.image_url as product_image
+      FROM reviews r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN products p ON r.product_id = p.id
+      ORDER BY r.created_at DESC
+    `);
     return rows;
   }
 
@@ -41,7 +52,7 @@ export class Review {
         u.full_name as user_full_name_alias
       FROM reviews r
       JOIN users u ON r.user_id = u.id
-      WHERE r.product_id = ?
+      WHERE r.product_id = ? AND r.status = 'approved'
       ORDER BY r.created_at ASC -- Order by ASC to build tree easily
     `, [productId]);
 
@@ -105,8 +116,8 @@ export class Review {
 
   static async create(data: Omit<IReview, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
     const [result] = await pool.query<ResultSetHeader>(
-      'INSERT INTO reviews (user_id, product_id, rating, content, parent_id) VALUES (?, ?, ?, ?, ?)',
-      [data.user_id, data.product_id, data.rating || null, data.content || null, data.parent_id || null]
+      'INSERT INTO reviews (user_id, product_id, rating, content, parent_id, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [data.user_id, data.product_id, data.rating || null, data.content || null, data.parent_id || null, data.status || 'pending']
     );
     return result.insertId;
   }
@@ -131,15 +142,20 @@ export class Review {
     return result.affectedRows > 0;
   }
 
+  static async updateStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>('UPDATE reviews SET status = ? WHERE id = ?', [status, id]);
+    return result.affectedRows > 0;
+  }
+
   static async getAverageRating(productId: number): Promise<number> {
-    // Only consider top-level reviews (parent_id IS NULL) with a rating
-    const [rows] = await pool.query<RowDataPacket[]>('SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = ? AND rating IS NOT NULL AND parent_id IS NULL', [productId]);
+    // Only consider approved top-level reviews (parent_id IS NULL) with a rating
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = ? AND rating IS NOT NULL AND parent_id IS NULL AND status = "approved"', [productId]);
     return rows[0]?.avg_rating || 0;
   }
 
   static async getRatingCount(productId: number): Promise<number> {
-    // Only count top-level reviews (parent_id IS NULL) with a rating
-    const [rows] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) as count FROM reviews WHERE product_id = ? AND rating IS NOT NULL AND parent_id IS NULL', [productId]);
+    // Only count approved top-level reviews (parent_id IS NULL) with a rating
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) as count FROM reviews WHERE product_id = ? AND rating IS NOT NULL AND parent_id IS NULL AND status = "approved"', [productId]);
     return rows[0]?.count || 0;
   }
 } 

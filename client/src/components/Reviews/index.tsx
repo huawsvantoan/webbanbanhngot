@@ -77,8 +77,8 @@ const Reviews: React.FC<ReviewsProps> = ({ productId, currentUserId, isAdmin = f
           payload.parent_id = replyingTo.id;
           payload.rating = null;
         }
-        await api.post(`/products/${productId}/reviews`, payload);
-        toast.success(replyingTo ? 'Phản hồi đã được gửi!' : 'Đánh giá đã được gửi!');
+        const response = await api.post(`/products/${productId}/reviews`, payload);
+        toast.success(replyingTo ? 'Phản hồi đã được gửi!' : response.data.message || 'Đánh giá đã được gửi và đang chờ duyệt!');
         setReplyingTo(null);
       }
       
@@ -169,7 +169,7 @@ const Reviews: React.FC<ReviewsProps> = ({ productId, currentUserId, isAdmin = f
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             {renderStars(Math.round(averageRating))}
-            <span className="text-lg font-semibold text-gray-900">{averageRating.toFixed(1)}</span>
+            <span className="text-lg font-semibold text-gray-900">{typeof averageRating === 'number' ? averageRating.toFixed(1) : averageRating}</span>
           </div>
           <span className="text-gray-600">({ratingCount} đánh giá)</span>
         </div>
@@ -189,6 +189,14 @@ const Reviews: React.FC<ReviewsProps> = ({ productId, currentUserId, isAdmin = f
                replyingTo ? `Trả lời ${replyingTo.user.full_name || replyingTo.user.username}` :
                'Viết đánh giá/bình luận'}
             </h4>
+            {!editingReview && !replyingTo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <Icons.Info className="inline w-4 h-4 mr-1" />
+                  Đánh giá của bạn sẽ được gửi để admin duyệt trước khi hiển thị công khai.
+                </p>
+              </div>
+            )}
             
             <form onSubmit={handleSubmitReview} className="space-y-4">
               {!replyingTo && (

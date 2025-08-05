@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { Icons } from '../../components/icons';
 import { toast } from 'react-hot-toast';
-// @ts-ignore
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface BlogPost {
   id: number;
@@ -43,15 +42,17 @@ const AdminBlogManagement: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    excerpt: '',
     image: '',
-    image_url: '',
-    status: 'draft' as BlogPost['status'],
-    tags: ''
+    status: 'draft' as BlogPost['status']
   });
 
   // Thêm state cho lỗi validate
   const [formErrors, setFormErrors] = useState<any>({});
+
+  // Callback functions để tránh re-render
+  const handleContentChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, content: value }));
+  }, []);
 
   useEffect(() => {
     fetchPosts();
@@ -60,7 +61,7 @@ const AdminBlogManagement: React.FC = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/blog');
+      const response = await api.get('/admin/blog?includeDeleted=true');
       setPosts(Array.isArray(response.data) ? response.data : []);
       setError(null);
     } catch (err: any) {
@@ -74,27 +75,20 @@ const AdminBlogManagement: React.FC = () => {
   // Hàm validate dữ liệu form
   const validateForm = () => {
     const errors: any = {};
+    
+    // Validate title
     if (!formData.title || formData.title.trim().length < 5) {
       errors.title = 'Tiêu đề phải có ít nhất 5 ký tự';
-    } else if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(formData.title.trim())) {
-      errors.title = 'Tiêu đề chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng';
     }
-    if (!formData.content || formData.content.trim().length === 0) {
+    
+    // Validate content - xử lý HTML content
+    const contentText = formData.content ? formData.content.replace(/<[^>]*>/g, '').trim() : '';
+    if (!contentText || contentText.length === 0) {
       errors.content = 'Nội dung không được để trống';
+    } else if (contentText.length < 10) {
+      errors.content = 'Nội dung phải có ít nhất 10 ký tự';
     }
-    if (formData.excerpt && formData.excerpt.length > 255) {
-      errors.excerpt = 'Tóm tắt không được vượt quá 255 ký tự';
-    }
-    if (
-      formData.image &&
-      formData.image.length > 0 &&
-      !(
-        /^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(formData.image) ||
-        /^\/uploads\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(formData.image)
-      )
-    ) {
-      errors.image = 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh hoặc ảnh đã upload)';
-    }
+    
     return errors;
   };
 
@@ -102,12 +96,15 @@ const AdminBlogManagement: React.FC = () => {
     const errors = validateForm();
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     try {
       const postData = {
-        ...formData,
-        image_url: formData.image || formData.image_url,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        image: formData.image, // Chỉ sử dụng image
+        status: formData.status
       };
+      
       await api.post('/admin/blog', postData);
       toast.success('Blog post created successfully');
       setShowCreateModal(false);
@@ -121,15 +118,19 @@ const AdminBlogManagement: React.FC = () => {
 
   const handleUpdatePost = async () => {
     if (!editingPost) return;
+    
     const errors = validateForm();
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     try {
       const postData = {
-        ...formData,
-        image_url: formData.image || formData.image_url,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        image: formData.image, // Chỉ sử dụng image
+        status: formData.status
       };
+      
       await api.put(`/admin/blog/${editingPost.id}`, postData);
       toast.success('Blog post updated successfully');
       setEditingPost(null);
@@ -160,11 +161,8 @@ const AdminBlogManagement: React.FC = () => {
     setFormData({
       title: post.title,
       content: post.content,
-      excerpt: post.excerpt,
-      image: post.image,
-      image_url: post.image_url || '',
-      status: post.status,
-      tags: post.tags.join(', ')
+      image: post.image || post.image_url || '', // Ưu tiên image, fallback về image_url
+      status: post.status
     });
   };
 
@@ -177,11 +175,8 @@ const AdminBlogManagement: React.FC = () => {
     setFormData({
       title: '',
       content: '',
-      excerpt: '',
       image: '',
-      image_url: '',
-      status: 'draft',
-      tags: ''
+      status: 'draft'
     });
   };
 
@@ -236,17 +231,31 @@ const AdminBlogManagement: React.FC = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Chỉ chấp nhận file ảnh!');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File ảnh không được lớn hơn 5MB!');
+      return;
+    }
+    
     const formData = new FormData();
     formData.append('image', file);
-    try {
-      const res = await api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setFormData(prev => ({ ...prev, image: res.data.imageUrl }));
-      toast.success('Tải ảnh lên thành công!');
-    } catch (err) {
-      toast.error('Tải ảnh lên thất bại!');
-    }
+         try {
+       const res = await api.post('/upload', formData, {
+         headers: { 'Content-Type': 'multipart/form-data' },
+       });
+       setFormData(prev => ({ ...prev, image: res.data.imageUrl }));
+       toast.success('Tải ảnh lên thành công!');
+     } catch (err) {
+       console.error('Upload error:', err);
+       toast.error('Tải ảnh lên thất bại!');
+     }
   };
 
   if (loading) {
@@ -329,13 +338,24 @@ const AdminBlogManagement: React.FC = () => {
               key={post.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-white rounded-lg shadow-md overflow-hidden ${Number(post.isDeleted) === 1 ? 'opacity-60' : ''}`}
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${Number(post.isDeleted) === 1 ? 'opacity-60 bg-red-50' : ''}`}
             >
-              <img
-                src={post.image_url ? `${process.env.REACT_APP_API_URL}${post.image_url}` : post.image ? `${process.env.REACT_APP_API_URL}${post.image}` : '/images/default-blog.jpg'}
-                alt={post.title}
-                className="w-full h-48 object-cover"
-              />
+              <div className="relative">
+                <img
+                  src={post.image ? (post.image.startsWith('http') ? post.image : `http://localhost:5000${post.image}`) : '/images/default-cake.jpg'}
+                  alt={post.title}
+                  className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/default-cake.jpg';
+                  }}
+                />
+                {Number(post.isDeleted) === 1 && (
+                  <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    Đã xóa
+                  </div>
+                )}
+              </div>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(post.status)}`}>
@@ -346,9 +366,17 @@ const AdminBlogManagement: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                   {post.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                  {post.excerpt}
-                </p>
+                <div className="text-gray-600 text-sm mb-4 line-clamp-3" 
+                    dangerouslySetInnerHTML={{ 
+                      __html: post.excerpt ? 
+                        (post.excerpt.length > 150 ? 
+                          post.excerpt.replace(/<[^>]*>/g, '').substring(0, 150) + '...' : 
+                          post.excerpt) : 
+                        (post.content ? 
+                          post.content.replace(/<[^>]*>/g, '').substring(0, 150) + '...' : 
+                          'Không có tóm tắt') 
+                    }} 
+                />
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                   <span>Tác giả: {post.author_name || 'Không rõ'}</span>
                   <span>{new Date(post.created_at).toLocaleDateString('vi-VN')}</span>
@@ -479,11 +507,15 @@ const AdminBlogManagement: React.FC = () => {
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                         {formData.image ? (
                           <div>
-                            <img
-                              src={formData.image.startsWith('/uploads') ? `${process.env.REACT_APP_API_URL}${formData.image}` : formData.image}
-                              alt="Preview"
-                              className="w-full max-w-xs h-48 object-cover rounded mb-4 mx-auto"
-                            />
+                                                         <img
+                               src={formData.image ? (formData.image.startsWith('http') ? formData.image : `http://localhost:5000${formData.image}`) : '/images/default-cake.jpg'}
+                               alt="Preview"
+                               className="w-full max-w-xs h-48 object-cover rounded mb-4 mx-auto"
+                               onError={(e) => {
+                                 const target = e.target as HTMLImageElement;
+                                 target.src = '/images/default-cake.jpg';
+                               }}
+                             />
                             <button
                               onClick={() => setFormData({ ...formData, image: '' })}
                               className="text-red-500 hover:text-red-700 text-sm"
@@ -506,84 +538,60 @@ const AdminBlogManagement: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Excerpt */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tóm tắt
-                      </label>
-                      <div className="border border-gray-300 rounded-lg">
-                        <CKEditor
-                          editor={ClassicEditor as any}
-                          data={formData.excerpt}
-                          onChange={(event: any, editor: any) => {
-                            const data = editor.getData();
-                            setFormData({ ...formData, excerpt: data });
-                          }}
-                          config={{
-                            toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
-                          }}
-                        />
-                      </div>
-                      {formErrors.excerpt && <div className="text-red-500 text-sm mt-1">{formErrors.excerpt}</div>}
-                    </div>
+                     {/* Content */}
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Nội dung *
+                       </label>
+                       <ReactQuill
+                         value={formData.content}
+                         onChange={handleContentChange}
+                         placeholder="Nhập nội dung bài viết..."
+                         modules={{
+                           toolbar: [
+                             [{ 'header': [1, 2, 3, false] }],
+                             ['bold', 'italic', 'underline', 'strikethrough'],
+                             ['link', 'image'],
+                             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                             [{ 'indent': '-1'}, { 'indent': '+1' }],
+                             [{ 'color': [] }, { 'background': [] }],
+                             [{ 'align': [] }],
+                             ['blockquote', 'code-block'],
+                             ['clean']
+                           ]
+                         }}
+                         formats={[
+                           'header',
+                           'bold', 'italic', 'underline', 'strikethrough',
+                           'link', 'image',
+                           'list', 'bullet',
+                           'indent',
+                           'color', 'background',
+                           'align',
+                           'blockquote', 'code-block'
+                         ]}
+                         theme="snow"
+                         className="quill-editor"
+                         style={{ height: '300px' }}
+                       />
+                       {formErrors.content && <div className="text-red-500 text-sm mt-1">{formErrors.content}</div>}
+                     </div>
 
-                    {/* Content */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nội dung *
-                      </label>
-                      <div className="border border-gray-300 rounded-lg">
-                        <CKEditor
-                          editor={ClassicEditor as any}
-                          data={formData.content}
-                          onChange={(event: any, editor: any) => {
-                            const data = editor.getData();
-                            setFormData({ ...formData, content: data });
-                          }}
-                          config={{
-                            toolbar: [
-                              'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                              'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'mediaEmbed', '|',
-                              'undo', 'redo'
-                            ]
-                          }}
-                        />
-                      </div>
-                      {formErrors.content && <div className="text-red-500 text-sm mt-1">{formErrors.content}</div>}
-                    </div>
-
-                    {/* Tags and Status Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Tags */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Thẻ (phân cách bằng dấu phẩy)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.tags}
-                          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Nhập các thẻ, cách nhau bởi dấu phẩy"
-                        />
-                      </div>
-
-                      {/* Status */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Trạng thái
-                        </label>
-                        <select
-                          value={formData.status}
-                          onChange={(e) => setFormData({ ...formData, status: e.target.value as BlogPost['status'] })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                        >
-                          <option value="draft">Bản nháp</option>
-                          <option value="published">Đã đăng</option>
-                          <option value="archived">Đã lưu trữ</option>
-                        </select>
-                      </div>
-                    </div>
+                     {/* Status */}
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Trạng thái
+                       </label>
+                       <select
+                         value={formData.status}
+                         onChange={(e) => setFormData({ ...formData, status: e.target.value as BlogPost['status'] })}
+                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                       >
+                         <option value="draft">Bản nháp</option>
+                         <option value="published">Đã đăng</option>
+                         <option value="archived">Đã lưu trữ</option>
+                       </select>
+                     </div>
                   </div>
                 </div>
 
@@ -631,30 +639,32 @@ const AdminBlogManagement: React.FC = () => {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
               >
-                <div className="flex items-center justify-center text-red-500 mb-4">
+                <div className="flex items-center justify-center text-orange-500 mb-4">
                   <Icons.AlertCircle size={48} />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
                   Xác nhận xóa bài viết
                 </h3>
                 <p className="text-gray-600 text-center mb-6">
-                  Bạn có chắc chắn muốn xóa bài viết "{postToDelete?.title}"? Hành động này không thể hoàn tác.
+                  Bạn có chắc chắn muốn xóa bài viết <b>"{postToDelete?.title}"</b>?
+                  <br />
+                  <span className="text-orange-600 font-semibold">Bài viết sẽ được chuyển vào thùng rác.</span>
                 </p>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleDeletePost}
-                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Xác nhận xóa
-                  </button>
+                <div className="flex justify-end gap-4">
                   <button
                     onClick={() => {
                       setShowDeleteModal(false);
                       setPostToDelete(null);
                     }}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                   >
                     Đóng
+                  </button>
+                  <button
+                    onClick={handleDeletePost}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                  >
+                    Xác nhận xóa
                   </button>
                 </div>
               </motion.div>
@@ -675,22 +685,29 @@ const AdminBlogManagement: React.FC = () => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-lg p-6 max-w-md w-full"
+                className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
               >
-                <h3 className="text-lg font-bold text-gray-900 mb-4 text-red-600">Xác nhận xóa vĩnh viễn</h3>
-                <p className="text-gray-600 mb-6">
-                  Bạn có chắc chắn muốn <b>xóa vĩnh viễn</b> bài viết "{postToPermanentDelete.title}"? Hành động này <b>không thể hoàn tác</b>.
+                <div className="flex items-center justify-center text-red-500 mb-4">
+                  <Icons.AlertCircle size={48} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-4 text-red-600 text-center">
+                  Xác nhận xóa vĩnh viễn
+                </h3>
+                <p className="text-gray-600 mb-6 text-center">
+                  Bạn có chắc chắn muốn <b>xóa vĩnh viễn</b> bài viết <b>"{postToPermanentDelete.title}"</b>? 
+                  <br />
+                  <span className="text-red-600 font-semibold">Hành động này không thể hoàn tác!</span>
                 </p>
                 <div className="flex justify-end gap-4">
                   <button
                     onClick={() => setShowPermanentDeleteModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                   >
                     Đóng
                   </button>
                   <button
                     onClick={handlePermanentDeleteConfirm}
-                    className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800"
+                    className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors font-medium"
                   >
                     Xác nhận xóa vĩnh viễn
                   </button>

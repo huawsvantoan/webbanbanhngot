@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -6,47 +6,26 @@ import { Icons } from '../../components/icons';
 import { toast } from 'react-hot-toast';
 
 interface AnalyticsData {
-  revenue: {
-    total: number;
-    monthly: { month: string; amount: number }[];
-    daily: { date: string; amount: number }[];
-    growth: number;
-  };
-  orders: {
-    total: number;
-    pending: number;
-    completed: number;
-    cancelled: number;
-    monthly: { month: string; count: number }[];
-    daily: { date: string; count: number }[];
-    growth: number;
-  };
-  customers: {
-    total: number;
-    newThisMonth: number;
-    active: number;
-    growth: number;
-  };
-  products: {
-    total: number;
-    lowStock: number;
-    outOfStock: number;
-    topSelling: { id: number; name: string; sales: number; revenue: number }[];
-  };
-  categories: {
-    name: string;
-    count: number;
-    revenue: number;
-  }[];
+  monthlyRevenue: any[];
+  orderStatusDistribution: any;
+  topProducts: any[];
+  topCategories: any[];
+  customerGrowth: any[];
+  revenueByDay: any[];
 }
 
 const Analytics: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [timeRange, setTimeRange] = useState('6months');
 
-  const fetchAnalytics = useCallback(async () => {
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [timeRange]);
+
+  const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/admin/analytics?range=${timeRange}`);
@@ -58,129 +37,18 @@ const Analytics: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(amount);
-  };
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('vi-VN').format(num);
-  };
-
-  const StatCard = ({ 
-    title, 
-    value, 
-    change, 
-    icon: Icon, 
-    color,
-    subtitle = ''
-  }: {
-    title: string;
-    value: string | number;
-    change: number;
-    icon: any;
-    color: string;
-    subtitle?: string;
-  }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg shadow-md p-6"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-          <div className="flex items-center gap-1 mt-2">
-            {change >= 0 ? (
-              <Icons.TrendingUp className="text-green-500" size={16} />
-            ) : (
-              <Icons.TrendingDown className="text-red-500" size={16} />
-            )}
-            <span className={`text-sm ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {change >= 0 ? '+' : ''}{change.toFixed(1)}% so với kỳ trước
-            </span>
-          </div>
-        </div>
-        <div className={`p-3 rounded-full ${color}`}>
-          <Icon className="text-white" size={24} />
-        </div>
-      </div>
-    </motion.div>
-  );
-
-  const SimpleChart = ({ 
-    data, 
-    title, 
-    color = 'bg-blue-500',
-    valueKey = 'amount',
-    emptyMessage = 'Không có dữ liệu'
-  }: {
-    data: { month?: string; date?: string; amount?: number; count?: number }[];
-    title: string;
-    color?: string;
-    valueKey?: 'amount' | 'count';
-    emptyMessage?: string;
-  }) => {
-    if (!data || data.length === 0) {
-      return (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
-          <div className="flex items-center justify-center h-32">
-            <p className="text-gray-500">{emptyMessage}</p>
-          </div>
-        </div>
-      );
-    }
-
-    const maxValue = Math.max(...data.map(d => d[valueKey] || 0));
-    
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
-        <div className="flex items-end justify-between h-32 gap-2">
-          {data.map((item, index) => {
-            const value = item[valueKey] || 0;
-            const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
-            const label = item.month ? item.month.slice(0, 3) : 
-                         item.date ? new Date(item.date).getDate().toString() : '';
-            
-            return (
-              <div key={index} className="flex-1 flex flex-col items-center">
-                <div 
-                  className={`w-full ${color} rounded-t transition-all duration-300 hover:opacity-80`}
-                  style={{ height: `${height}%` }}
-                  title={`${valueKey === 'amount' ? formatCurrency(value) : value}`}
-                />
-                <p className="text-xs text-gray-600 mt-2 text-center">
-                  {label}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        <span className="ml-4 text-gray-600 text-lg">Đang tải dữ liệu...</span>
       </div>
     );
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
@@ -188,202 +56,274 @@ const Analytics: React.FC = () => {
             <Icons.AlertCircle size={48} />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Lỗi</h2>
-          <p className="text-gray-600 text-center">{error || 'Không thể tải dữ liệu thống kê'}</p>
-          <button 
-            onClick={fetchAnalytics}
-            className="mt-4 w-full bg-pink-500 text-white py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors"
-          >
-            Thử lại
-          </button>
+          <p className="text-gray-600 text-center">{error}</p>
         </div>
       </div>
     );
   }
 
+  if (!data) return null;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'delivered':
+        return 'bg-green-500';
+      case 'pending':
+      case 'processing':
+        return 'bg-yellow-500';
+      case 'shipped':
+        return 'bg-blue-500';
+      case 'cancelled':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Hoàn thành';
+      case 'delivered':
+        return 'Đã giao';
+      case 'pending':
+        return 'Chờ xử lý';
+      case 'processing':
+        return 'Đang xử lý';
+      case 'shipped':
+        return 'Đang giao';
+      case 'cancelled':
+        return 'Đã hủy';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Thống kê & Phân tích</h1>
-              <p className="text-gray-600 mt-2">Theo dõi hiệu suất kinh doanh và thông tin chi tiết</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Icons.Filter className="text-gray-400" size={20} />
-                <select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+          <h1 className="text-3xl font-bold text-gray-800">Phân tích dữ liệu</h1>
+          <p className="text-gray-600 mt-2">Thống kê chi tiết và biểu đồ phân tích</p>
+        </motion.div>
+
+        {/* Time Range Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-md p-6 mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Khoảng thời gian</h2>
+            <div className="flex gap-2">
+              {[
+                { value: '7days', label: '7 ngày' },
+                { value: '30days', label: '30 ngày' },
+                { value: '3months', label: '3 tháng' },
+                { value: '6months', label: '6 tháng' },
+                { value: '1year', label: '1 năm' }
+              ].map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setTimeRange(range.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    timeRange === range.value
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  <option value="7d">7 ngày qua</option>
-                  <option value="30d">30 ngày qua</option>
-                  <option value="90d">90 ngày qua</option>
-                  <option value="1y">1 năm qua</option>
-                </select>
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Revenue Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-md p-6 mb-8"
+        >
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Doanh thu theo thời gian</h2>
+          <div className="space-y-4">
+            {data.monthlyRevenue.map((item: any, index: number) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 w-24">{item.month}</span>
+                <div className="flex-1 mx-4">
+                  <div className="w-full bg-gray-200 rounded-full h-4">
+                    <div 
+                      className="bg-gradient-to-r from-pink-500 to-purple-500 h-4 rounded-full transition-all duration-300" 
+                      style={{ width: `${Math.min((item.amount / Math.max(...data.monthlyRevenue.map((m: any) => m.amount))) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-gray-900 w-24 text-right">
+                  ${item.amount.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Order Status Distribution */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-md p-6 mb-8"
+        >
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Phân bố trạng thái đơn hàng</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {Object.entries(data.orderStatusDistribution).map(([status, count]: [string, any]) => (
+                <div key={status} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full ${getStatusColor(status)}`}></div>
+                    <span className="text-sm text-gray-600">{getStatusText(status)}</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">{count}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="relative w-32 h-32">
+                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 32 32">
+                                     {Object.entries(data.orderStatusDistribution).map(([status, count]: [string, any], index: number) => {
+                     const total = Object.values(data.orderStatusDistribution).reduce((a: any, b: any) => a + b, 0) as number;
+                     const percentage = (count / total) * 100;
+                    const radius = 14;
+                    const circumference = 2 * Math.PI * radius;
+                    const strokeDasharray = circumference;
+                    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+                    const colors = ['#3B82F6', '#F59E0B', '#10B981', '#EF4444', '#8B5CF6'];
+                    
+                    return (
+                      <circle
+                        key={status}
+                        cx="16"
+                        cy="16"
+                        r={radius}
+                        fill="none"
+                        stroke={colors[index % colors.length]}
+                        strokeWidth="2"
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                        style={{
+                          transformOrigin: 'center',
+                          transform: `rotate(${index * 72}deg)`
+                        }}
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-medium text-gray-600">Tổng</span>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Tổng doanh thu"
-            value={formatCurrency(data.revenue.total)}
-            change={data.revenue.growth}
-            icon={Icons.DollarSign}
-            color="bg-pink-500"
-            subtitle={`${data.orders.completed} đơn hàng hoàn thành`}
-          />
-          <StatCard
-            title="Tổng đơn hàng"
-            value={formatNumber(data.orders.total)}
-            change={data.orders.growth}
-            icon={Icons.ShoppingCart}
-            color="bg-blue-500"
-            subtitle={`${data.orders.pending} chờ xử lý, ${data.orders.cancelled} đã hủy`}
-          />
-          <StatCard
-            title="Khách hàng mới"
-            value={formatNumber(data.customers.newThisMonth)}
-            change={data.customers.growth}
-            icon={Icons.Users}
-            color="bg-green-500"
-            subtitle={`${data.customers.total} khách hàng tổng cộng`}
-          />
-          <StatCard
-            title="Sản phẩm"
-            value={formatNumber(data.products.total)}
-            change={0}
-            icon={Icons.Package}
-            color="bg-purple-500"
-            subtitle={`${data.products.lowStock} sắp hết, ${data.products.outOfStock} hết hàng`}
-          />
-        </div>
-
-        {/* Order Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-6 mb-8"
-        >
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Trạng thái đơn hàng</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <p className="text-2xl font-bold text-yellow-600">{data.orders.pending}</p>
-              <p className="text-sm text-gray-600">Chờ xử lý</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {data.orders.total > 0 ? `${((data.orders.pending / data.orders.total) * 100).toFixed(1)}%` : '0%'}
-              </p>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">{data.orders.completed}</p>
-              <p className="text-sm text-gray-600">Đã hoàn thành</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {data.orders.total > 0 ? `${((data.orders.completed / data.orders.total) * 100).toFixed(1)}%` : '0%'}
-              </p>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <p className="text-2xl font-bold text-red-600">{data.orders.cancelled}</p>
-              <p className="text-sm text-gray-600">Đã hủy</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {data.orders.total > 0 ? `${((data.orders.cancelled / data.orders.total) * 100).toFixed(1)}%` : '0%'}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Charts */}
+        {/* Top Products and Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <SimpleChart
-            data={data.revenue.monthly}
-            title="Doanh thu theo tháng"
-            color="bg-pink-500"
-            valueKey="amount"
-            emptyMessage="Chưa có doanh thu trong thời gian này"
-          />
-          <SimpleChart
-            data={data.orders.monthly}
-            title="Đơn hàng theo tháng"
-            color="bg-blue-500"
-            valueKey="count"
-            emptyMessage="Chưa có đơn hàng trong thời gian này"
-          />
-        </div>
-
-        {/* Top Products */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-6 mb-8"
-        >
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Sản phẩm bán chạy</h2>
-          {data.products.topSelling.length > 0 ? (
-            <div className="space-y-4">
-              {data.products.topSelling.slice(0, 5).map((product, index) => (
-                <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+          {/* Top Products */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-md p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Sản phẩm bán chạy nhất</h3>
+            <div className="space-y-3">
+              {data.topProducts.map((product: any, index: number) => (
+                <div key={product.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-bold text-pink-600">{index + 1}</span>
+                    </div>
                     <div>
                       <p className="font-medium text-gray-900">{product.name}</p>
-                      <p className="text-sm text-gray-600">Đã bán: {product.sales} sản phẩm</p>
+                      <p className="text-sm text-gray-500">${product.price}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatCurrency(product.revenue)}</p>
-                    <p className="text-xs text-gray-500">Doanh thu</p>
+                    <p className="font-bold text-green-600">{product.total_sold}</p>
+                    <p className="text-xs text-gray-500">Đã bán</p>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Chưa có sản phẩm bán chạy</p>
-            </div>
-          )}
-        </motion.div>
+          </motion.div>
 
-        {/* Category Performance */}
+          {/* Top Categories */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-md p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Danh mục phổ biến</h3>
+            <div className="space-y-3">
+              {data.topCategories?.map((category: any, index: number) => (
+                <div key={category.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{category.name}</p>
+                      <p className="text-sm text-gray-500">{category.product_count} sản phẩm</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-blue-600">{category.total_sales}</p>
+                    <p className="text-xs text-gray-500">Đã bán</p>
+                  </div>
+                </div>
+              )) || (
+                <div className="text-center py-8 text-gray-500">
+                  <Icons.FolderOpen size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p>Chưa có dữ liệu danh mục</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Customer Growth */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-lg shadow-md p-6"
         >
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Hiệu suất danh mục</h2>
-          {data.categories.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.categories.map((category, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium text-gray-900 mb-2">{category.name}</h3>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Sản phẩm: {category.count}</p>
-                    <p className="text-sm text-gray-600">Doanh thu: {formatCurrency(category.revenue)}</p>
-                    {category.revenue > 0 && (
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div 
-                          className="bg-pink-500 h-2 rounded-full" 
-                          style={{ 
-                            width: `${Math.min((category.revenue / Math.max(...data.categories.map(c => c.revenue))) * 100, 100)}%` 
-                          }}
-                        ></div>
-                      </div>
-                    )}
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Tăng trưởng khách hàng</h2>
+          <div className="space-y-4">
+            {data.customerGrowth?.map((item: any, index: number) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 w-24">{item.month}</span>
+                <div className="flex-1 mx-4">
+                  <div className="w-full bg-gray-200 rounded-full h-4">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-blue-500 h-4 rounded-full transition-all duration-300" 
+                      style={{ width: `${Math.min((item.count / Math.max(...data.customerGrowth.map((m: any) => m.count))) * 100, 100)}%` }}
+                    ></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Chưa có dữ liệu danh mục</p>
-            </div>
-          )}
+                <span className="text-sm font-medium text-gray-900 w-24 text-right">
+                  {item.count} khách hàng
+                </span>
+              </div>
+            )) || (
+              <div className="text-center py-8 text-gray-500">
+                <Icons.Users size={48} className="mx-auto mb-4 text-gray-300" />
+                <p>Chưa có dữ liệu tăng trưởng khách hàng</p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>

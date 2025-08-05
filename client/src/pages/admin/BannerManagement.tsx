@@ -1,35 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
 import { Icons } from '../../components/icons';
 import { toast } from 'react-hot-toast';
 import { bannerSchema } from '../../validations/bannerSchema';
 import { useFormik } from 'formik';
-
-interface Banner {
-  id: number;
-  title: string;
-  subtitle: string;
-  description: string;
-  image: string;
-  button_text: string;
-  button_link: string;
-  position: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { 
+  getBanners, 
+  createBanner, 
+  updateBanner, 
+  deleteBanner, 
+  toggleBannerActive,
+  Banner,
+  CreateBannerData
+} from '../../services/bannerService';
 
 // Thư viện ảnh có sẵn
 const imageLibrary = [
-  { name: 'Bánh Kem 1', url: '/images/banner1.avif', category: 'cake' },
-  { name: 'Bánh Kem 2', url: '/images/banner2.avif', category: 'cake' },
-  { name: 'Bánh Kem 3', url: '/images/banner3.avif', category: 'cake' },
-  { name: 'Bánh Kem 4', url: '/images/banner4.avif', category: 'cake' },
-  { name: 'Bánh Kem 5', url: '/images/banner5.avif', category: 'cake' },
-  { name: 'Bánh Mì', url: '/images/banhmi.webp', category: 'bread' },
-  { name: 'Bánh Mặc Định', url: '/images/default-cake.jpg', category: 'default' },
+  { name: 'Bánh Kem 1', url: '/images/banner1.avif', category: 'bánh kem' },
+  { name: 'Bánh Kem 2', url: '/images/banner2.avif', category: 'bánh kem' },
+  { name: 'Bánh Kem 3', url: '/images/banner3.avif', category: 'bánh kem' },
+  { name: 'Bánh Kem 4', url: '/images/banner4.avif', category: 'bánh kem' },
+  { name: 'Bánh Kem 5', url: '/images/banner5.avif', category: 'bánh kem' },
+  { name: 'Bánh Mì', url: '/images/banhmi.webp', category: 'bánh mì' },
+  { name: 'Bánh Mặc Định', url: '/images/default-cake.jpg', category: 'mặc định' },
 ];
 
 const AdminBannerManagement: React.FC = () => {
@@ -41,6 +35,7 @@ const AdminBannerManagement: React.FC = () => {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [bannerToDelete, setBannerToDelete] = useState<Banner | null>(null);
+
   // Thêm hàm xử lý upload file đơn giản
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -58,11 +53,30 @@ const AdminBannerManagement: React.FC = () => {
     }
     
     try {
-      // Tạo URL tạm thời để preview
-      const imageUrl = URL.createObjectURL(file);
-      formik.setFieldValue('image', imageUrl);
+      // Tạo FormData để upload
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Upload file lên server
+      const response = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const result = await response.json();
+      
+      // Cập nhật đường dẫn ảnh trong form
+      formik.setFieldValue('image_url', result.imageUrl);
       toast.success('Upload ảnh thành công!');
     } catch (error) {
+      console.error('Upload error:', error);
       toast.error('Upload ảnh thất bại!');
     }
   };
@@ -70,14 +84,11 @@ const AdminBannerManagement: React.FC = () => {
   // Form state
   const formik = useFormik({
     initialValues: {
-    title: '',
-    subtitle: '',
-    description: '',
-    image: '',
-    button_text: '',
-    button_link: '',
-    position: 1,
-      is_active: true,
+      title: '',
+      description: '',
+      image_url: '',
+      position: banners.length > 0 ? Math.max(...banners.map(b => b.position)) + 1 : 1,
+      is_active: 1,
     },
     validationSchema: bannerSchema,
     enableReinitialize: true,
@@ -94,23 +105,31 @@ const AdminBannerManagement: React.FC = () => {
     fetchBanners();
   }, []);
 
+  // Cập nhật vị trí mặc định khi banners thay đổi
+  useEffect(() => {
+    if (banners.length > 0 && !editingBanner) {
+      const maxPosition = Math.max(...banners.map(b => b.position));
+      formik.setFieldValue('position', maxPosition + 1);
+    }
+  }, [banners, editingBanner]);
+
   const fetchBanners = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/banners');
-      setBanners(response.data);
+      const data = await getBanners();
+      setBanners(data);
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch banners');
-      toast.error('Failed to load banners');
+      setError(err.response?.data?.message || 'Không thể tải banners');
+      toast.error('Không thể tải banners');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateBanner = async (values: any) => {
+  const handleCreateBanner = async (values: CreateBannerData) => {
     try {
-      await api.post('/admin/banners', values);
+      await createBanner(values);
       toast.success('Tạo banner thành công');
       setShowCreateModal(false);
       resetForm();
@@ -120,10 +139,10 @@ const AdminBannerManagement: React.FC = () => {
     }
   };
 
-  const handleUpdateBanner = async (values: any) => {
+  const handleUpdateBanner = async (values: Partial<CreateBannerData>) => {
     if (!editingBanner) return;
     try {
-      await api.put(`/admin/banners/${editingBanner.id}`, values);
+      await updateBanner(editingBanner.id, values);
       toast.success('Cập nhật banner thành công');
       setEditingBanner(null);
       resetForm();
@@ -137,13 +156,13 @@ const AdminBannerManagement: React.FC = () => {
     if (!bannerToDelete) return;
 
     try {
-      await api.delete(`/admin/banners/${bannerToDelete.id}`);
-      toast.success('Banner deleted successfully');
+      await deleteBanner(bannerToDelete.id);
+      toast.success('Banner đã được xóa thành công');
       setShowDeleteModal(false);
       setBannerToDelete(null);
       fetchBanners();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete banner');
+      toast.error(err.response?.data?.message || 'Xóa banner thất bại');
     }
   };
 
@@ -151,11 +170,8 @@ const AdminBannerManagement: React.FC = () => {
     setEditingBanner(banner);
     formik.setValues({
       title: banner.title,
-      subtitle: banner.subtitle,
       description: banner.description,
-      image: banner.image,
-      button_text: banner.button_text,
-      button_link: banner.button_link,
+      image_url: banner.image_url,
       position: banner.position,
       is_active: banner.is_active,
     });
@@ -172,14 +188,53 @@ const AdminBannerManagement: React.FC = () => {
 
   const handleToggleActive = async (banner: Banner) => {
     try {
-      await api.put(`/admin/banners/${banner.id}`, {
-        ...banner,
-        is_active: !banner.is_active
-      });
-      toast.success(`Banner ${banner.is_active ? 'deactivated' : 'activated'} successfully`);
+      await toggleBannerActive(banner.id, !banner.is_active);
+      toast.success(`Banner ${banner.is_active ? 'đã ẩn' : 'đã hiển thị'} thành công`);
       fetchBanners();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update banner status');
+      toast.error(err.response?.data?.message || 'Cập nhật trạng thái banner thất bại');
+    }
+  };
+
+  const handleRestore = async (banner: Banner) => {
+    try {
+      const response = await fetch(`/api/admin/banners/${banner.id}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        toast.success('Banner đã được khôi phục thành công');
+        fetchBanners();
+      } else {
+        toast.error('Khôi phục banner thất bại');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi khi khôi phục banner');
+    }
+  };
+
+  const handleHardDelete = async (banner: Banner) => {
+    if (window.confirm(`Bạn có chắc muốn xóa VĨNH VIỄN banner "${banner.title}"? Hành động này không thể hoàn tác!`)) {
+      try {
+        const response = await fetch(`/api/admin/banners/${banner.id}/hard`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          toast.success('Banner đã được xóa vĩnh viễn');
+          fetchBanners();
+        } else {
+          toast.error('Xóa banner thất bại');
+        }
+      } catch (err: any) {
+        toast.error('Lỗi khi xóa banner');
+      }
     }
   };
 
@@ -198,7 +253,7 @@ const AdminBannerManagement: React.FC = () => {
           <div className="flex items-center justify-center text-red-500 mb-4">
             <Icons.AlertCircle size={48} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Error</h2>
+          <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Lỗi</h2>
           <p className="text-gray-600 text-center">{error}</p>
         </div>
       </div>
@@ -215,16 +270,18 @@ const AdminBannerManagement: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Manage Banners</h1>
-              <p className="text-gray-600 mt-2">Create and manage homepage banners</p>
+              <h1 className="text-3xl font-bold text-gray-800">Quản Lý Banner</h1>
+              <p className="text-gray-600 mt-2">Tạo và quản lý banner trang chủ</p>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors flex items-center gap-2"
-            >
-              <Icons.Plus size={20} />
-              Create Banner
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors flex items-center gap-2"
+              >
+                <Icons.Plus size={20} />
+                + Tạo Banner
+              </button>
+            </div>
           </div>
         </motion.div>
 
@@ -235,13 +292,19 @@ const AdminBannerManagement: React.FC = () => {
               key={banner.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-shadow duration-300 flex flex-col"
+              className={`bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-shadow duration-300 flex flex-col ${
+                banner.isDeleted === 1 ? 'opacity-60' : ''
+              }`}
             >
               <div className="relative h-52 bg-gray-100">
                 <img
-                  src={banner.image || '/images/default-banner.jpg'}
+                  src={banner.image_url ? `${process.env.REACT_APP_API_URL || ''}${banner.image_url}` : '/images/banner1.avif'}
                   alt={banner.title}
                   className="w-full h-full object-cover rounded-t-2xl"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/banner1.avif';
+                  }}
                 />
                 {/* Overlay gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent rounded-t-2xl"></div>
@@ -262,51 +325,64 @@ const AdminBannerManagement: React.FC = () => {
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
                   <h3 className="text-xl font-extrabold text-gray-900 mb-1 line-clamp-1">{banner.title}</h3>
-                  <p className="text-sm text-pink-600 mb-1 font-semibold line-clamp-1">{banner.subtitle}</p>
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{banner.description}</p>
-                  {banner.button_text && (
-                    <div className="mb-4">
-                      <span className="text-xs text-gray-500 mr-1">Nút:</span>
-                      <span className="inline-block bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                        {banner.button_text}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <button
-                    onClick={() => handleEditClick(banner)}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center gap-1 font-semibold shadow-md"
-                  >
-                    <Icons.FolderOpen size={16} />
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(banner)}
-                    className={`px-4 py-2 rounded-full font-semibold shadow-md flex items-center justify-center transition-colors duration-200 ${
-                      banner.is_active
-                        ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                        : 'bg-green-500 text-white hover:bg-green-600'
-                    }`}
-                  >
-                    {banner.is_active ? (
-                      <>
-                        <Icons.Eye size={16} />
-                        <span className="ml-1">Ẩn</span>
-                      </>
-                    ) : (
-                      <>
-                        <Icons.Eye size={16} />
-                        <span className="ml-1">Hiển thị</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(banner)}
-                    className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition-colors font-semibold shadow-md flex items-center justify-center"
-                  >
-                    <Icons.Trash2 size={16} />
-                  </button>
+                  {banner.isDeleted === 1 ? (
+                    <>
+                      <button
+                        onClick={() => handleRestore(banner)}
+                        className="flex-1 bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition-colors flex items-center justify-center gap-1 font-semibold shadow-md"
+                      >
+                        <Icons.RefreshCcw size={16} />
+                        Khôi phục
+                      </button>
+                      <button
+                        onClick={() => handleHardDelete(banner)}
+                        className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition-colors font-semibold shadow-md flex items-center justify-center"
+                        title="Xóa vĩnh viễn"
+                      >
+                        <Icons.Trash2 size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleEditClick(banner)}
+                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center gap-1 font-semibold shadow-md"
+                      >
+                        <Icons.FolderOpen size={16} />
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(banner)}
+                        className={`px-4 py-2 rounded-full font-semibold shadow-md flex items-center justify-center transition-colors duration-200 ${
+                          banner.is_active
+                            ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                            : 'bg-green-500 text-white hover:bg-green-600'
+                        }`}
+                      >
+                        {banner.is_active ? (
+                          <>
+                            <Icons.Eye size={16} />
+                            <span className="ml-1">Ẩn</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icons.Eye size={16} />
+                            <span className="ml-1">Hiển thị</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(banner)}
+                        className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition-colors font-semibold shadow-md flex items-center justify-center"
+                        title="Xóa mềm (có thể khôi phục)"
+                      >
+                        <Icons.Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -320,8 +396,8 @@ const AdminBannerManagement: React.FC = () => {
             className="text-center py-16"
           >
             <Icons.Gift className="mx-auto text-gray-400 mb-4" size={48} />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No banners found</h3>
-            <p className="text-gray-600">Create your first banner to get started.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy banner nào</h3>
+            <p className="text-gray-600">Tạo banner đầu tiên để bắt đầu.</p>
           </motion.div>
         )}
 
@@ -343,7 +419,7 @@ const AdminBannerManagement: React.FC = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">
-                    {editingBanner ? 'Edit Banner' : 'Create New Banner'}
+                    {editingBanner ? 'Sửa Banner' : 'Tạo Banner Mới'}
                     </h2>
                     <button
                       onClick={() => {
@@ -377,27 +453,11 @@ const AdminBannerManagement: React.FC = () => {
                           )}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Phụ đề
-                        </label>
-                        <input
-                          type="text"
-                            name="subtitle"
-                            value={formik.values.subtitle}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                            placeholder="Nhập phụ đề banner"
-                        />
-                          {formik.touched.subtitle && formik.errors.subtitle && (
-                            <div className="text-red-500 text-sm mt-1">{formik.errors.subtitle}</div>
-                          )}
-                      </div>
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Description
+                          Mô tả
                         </label>
                         <textarea
                             name="description"
@@ -406,12 +466,14 @@ const AdminBannerManagement: React.FC = () => {
                             onBlur={formik.handleBlur}
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Enter banner description"
+                          placeholder="Nhập mô tả banner"
                         />
                           {formik.touched.description && formik.errors.description && (
                             <div className="text-red-500 text-sm mt-1">{formik.errors.description}</div>
                           )}
                       </div>
+
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,8 +483,8 @@ const AdminBannerManagement: React.FC = () => {
                           {/* Input đường dẫn */}
                           <input
                             type="text"
-                              name="image"
-                              value={formik.values.image}
+                              name="image_url"
+                              value={formik.values.image_url}
                               onChange={formik.handleChange}
                               onBlur={formik.handleBlur}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
@@ -454,26 +516,8 @@ const AdminBannerManagement: React.FC = () => {
                             }}
                           />
                         </div>
-                          {formik.touched.image && formik.errors.image && (
-                            <div className="text-red-500 text-sm mt-1">{formik.errors.image}</div>
-                          )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Button Text
-                        </label>
-                        <input
-                          type="text"
-                            name="button_text"
-                            value={formik.values.button_text}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="e.g., Shop Now"
-                        />
-                          {formik.touched.button_text && formik.errors.button_text && (
-                            <div className="text-red-500 text-sm mt-1">{formik.errors.button_text}</div>
+                          {formik.touched.image_url && formik.errors.image_url && (
+                            <div className="text-red-500 text-sm mt-1">{formik.errors.image_url}</div>
                           )}
                       </div>
 
@@ -501,8 +545,8 @@ const AdminBannerManagement: React.FC = () => {
                             <input
                               type="checkbox"
                                 name="is_active"
-                                checked={formik.values.is_active}
-                                onChange={formik.handleChange}
+                                checked={formik.values.is_active === 1}
+                                onChange={e => formik.setFieldValue('is_active', e.target.checked ? 1 : 0)}
                               className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
                             />
                               <span className="ml-2 text-sm text-gray-700">Đang hiển thị</span>
@@ -511,14 +555,14 @@ const AdminBannerManagement: React.FC = () => {
                       </div>
 
                       {/* Preview ảnh đơn giản */}
-                      {formik.values.image && (
+                      {formik.values.image_url && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Preview Ảnh
                           </label>
                           <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
                             <img
-                              src={formik.values.image}
+                              src={formik.values.image_url}
                               alt="Preview"
                               className="w-full h-full object-cover"
                               onError={(e) => {
@@ -575,17 +619,19 @@ const AdminBannerManagement: React.FC = () => {
                   <Icons.AlertCircle size={48} />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2 text-center">
-                  Delete Banner
+                  Xóa Banner
                 </h3>
                 <p className="text-gray-600 text-center mb-6">
-                  Are you sure you want to delete "{bannerToDelete?.title}"? This action cannot be undone.
+                  Bạn có chắc chắn muốn xóa "{bannerToDelete?.title}"? 
+                  <br />
+                  <span className="text-blue-600 font-medium">Banner sẽ được xóa mềm và có thể khôi phục sau.</span>
                 </p>
                 <div className="flex items-center gap-4">
                   <button
                     onClick={handleDeleteBanner}
                     className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    Delete
+                    Xóa
                   </button>
                   <button
                     onClick={() => {
@@ -594,7 +640,7 @@ const AdminBannerManagement: React.FC = () => {
                     }}
                     className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    Hủy
                   </button>
                 </div>
               </motion.div>

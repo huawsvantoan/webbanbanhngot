@@ -62,10 +62,19 @@ const Products: React.FC = () => {
 
   useEffect(() => {
     const urlSearch = searchParams.get('search') || '';
+    const urlCategory = searchParams.get('category');
+    
     setSearchTerm(urlSearch);
     setSearchQuery(urlSearch);
+    
+    if (urlCategory) {
+      setSelectedCategory(parseInt(urlCategory));
+    } else {
+      setSelectedCategory(null);
+    }
+    
     setCurrentPage(1);
-  }, [searchParams.get('search')]);
+  }, [searchParams.get('search'), searchParams.get('category')]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -139,6 +148,13 @@ const Products: React.FC = () => {
   const handleCategoryChange = (categoryId: number | null) => {
     setSelectedCategory(categoryId);
     setCurrentPage(1);
+    
+    // Cập nhật URL params
+    if (categoryId) {
+      setSearchParams({ category: categoryId.toString() });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleFilterChange = (filter: 'all' | 'featured' | 'hot') => {
@@ -173,13 +189,22 @@ const Products: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      whileHover={{ y: -8, scale: 1.02 }}
-      className={`group bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-pink-200 ${
-        isSpecial ? 'ring-2 ring-pink-200' : ''
+      whileHover={{ y: -12, scale: 1.03 }}
+      className={`group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-pink-200 relative ${
+        isSpecial ? 'ring-2 ring-pink-200 shadow-pink-100' : ''
       }`}
     >
+      {/* Special Badge for Featured/Hot */}
+      {isSpecial && (
+        <div className="absolute top-0 left-0 w-0 h-0 border-l-[60px] border-l-pink-500 border-t-[60px] border-t-transparent z-10">
+          <div className="absolute top-[-50px] left-[-50px] text-white text-xs font-bold transform -rotate-45">
+            {product.is_featured ? 'NỔI BẬT' : 'HOT'}
+          </div>
+        </div>
+      )}
+
       <Link to={`/products/${product.id}`} className="block">
-        <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           <img
             ref={el => imgRefs.current[index] = el}
             src={
@@ -193,90 +218,106 @@ const Products: React.FC = () => {
             className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
           />
           
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {product.is_featured && (
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                Nổi Bật
-              </div>
-            )}
-            {product.is_hot && (
-              <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                HOT
-              </div>
-            )}
-            {product.discount_percent && product.discount_percent > 0 && (
-              <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                -{product.discount_percent}%
-              </div>
-            )}
-          </div>
+          {/* Discount Badge - Only show if there's real discount */}
+          {product.discount_percent && product.discount_percent > 0 && product.original_price && product.original_price > product.price && (
+            <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
+              -{product.discount_percent}%
+            </div>
+          )}
 
-          {/* Rating */}
-          {product.rating_avg && product.rating_avg > 0 && (
-            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-              <Icons.Star className="text-yellow-500" size={12} />
-              <span className="text-xs font-semibold text-gray-800">
+          {/* Rating Badge */}
+          {product.rating_avg && typeof product.rating_avg === 'number' && product.rating_avg > 0 && (
+            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 shadow-lg">
+              <Icons.Star className="text-yellow-500 fill-current" size={14} />
+              <span className="text-sm font-bold text-gray-800">
                 {product.rating_avg.toFixed(1)}
               </span>
             </div>
           )}
 
-          {/* Quick View Overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+          {/* Hover Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center pb-4">
             <div className="bg-white rounded-full p-3 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
               <Icons.Eye className="text-gray-700" size={20} />
             </div>
           </div>
 
+          {/* Out of Stock Overlay */}
           {product.stock === 0 && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-              <span className="text-white font-bold text-lg">Hết Hàng</span>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+              <div className="text-center">
+                <Icons.XCircle className="text-white mx-auto mb-2" size={32} />
+                <span className="text-white font-bold text-lg">Hết Hàng</span>
+              </div>
             </div>
           )}
         </div>
         
-        <div className="p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 leading-tight group-hover:text-pink-600 transition-colors">
+        <div className="p-5">
+          {/* Product Name */}
+          <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 leading-tight group-hover:text-pink-600 transition-colors duration-300">
             {product.name}
           </h3>
-          <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-            {product.description}
-          </p>
           
-          {/* Price */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl font-bold text-pink-600">
-              {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
-            </span>
-            {product.original_price && product.original_price > product.price && (
-              <span className="text-sm text-gray-500 line-through">
-                {product.original_price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+          {/* Description */}
+          {product.description && (
+            <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+              {product.description}
+            </p>
+          )}
+          
+          {/* Price Section */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-pink-600">
+                {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+              </span>
+              {product.original_price && product.original_price > product.price && (
+                <span className="text-sm text-gray-500 line-through">
+                  {product.original_price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                </span>
+              )}
+            </div>
+            
+            {/* Stock Indicator */}
+            {product.stock > 0 && product.stock <= 10 && (
+              <span className="text-xs text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded-full">
+                Chỉ còn {product.stock}
               </span>
             )}
           </div>
-
-          {/* View count */}
-          {product.view_count && product.view_count > 0 && (
-            <div className="flex items-center gap-1 text-xs text-gray-500 mb-4">
-              <Icons.Eye size={12} />
-              <span>{product.view_count} lượt xem</span>
-            </div>
-          )}
         </div>
       </Link>
       
-      <div className="px-6 pb-6">
+      {/* Add to Cart Button */}
+      <div className="px-5 pb-5">
         <button
           onClick={e => handleAddToCart(product.id, e, imgRefs.current[index])}
           disabled={product.stock === 0}
-          className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 ${
+          className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group ${
             product.stock === 0
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 transform hover:scale-105 shadow-lg'
+              : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
           }`}
         >
-          {product.stock === 0 ? 'Hết Hàng' : 'Thêm Vào Giỏ'}
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            {product.stock === 0 ? (
+              <>
+                <Icons.XCircle size={16} />
+                Hết Hàng
+              </>
+            ) : (
+              <>
+                <Icons.ShoppingCart size={16} />
+                Thêm Vào Giỏ
+              </>
+            )}
+          </span>
+          
+          {/* Button Hover Effect */}
+          {product.stock > 0 && (
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          )}
         </button>
       </div>
     </motion.div>
@@ -315,10 +356,64 @@ const Products: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50">
       <div className="container mx-auto px-4 py-6">
 
-        {/* Category Cards Section */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Danh mục sản phẩm</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Enhanced Categories Section */}
+        <div className="mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-8"
+          >
+           
+          </motion.div>
+
+          {/* Navigation Buttons */}
+          {categories.length > 5 && (
+            <div className="flex justify-between items-center mb-6">
+              <motion.button
+                onClick={() => {
+                  const container = document.getElementById('categories-container');
+                  if (container) {
+                    container.scrollLeft -= 300;
+                  }
+                }}
+                className="flex items-center px-4 py-2 bg-white text-pink-600 font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-pink-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Icons.ChevronLeft size={20} className="mr-2" />
+                Trước
+              </motion.button>
+              
+              <div className="text-center">
+                <span className="text-gray-600 font-medium">
+                  Danh mục sản phẩm
+                </span>
+              </div>
+              
+              <motion.button
+                onClick={() => {
+                  const container = document.getElementById('categories-container');
+                  if (container) {
+                    container.scrollLeft += 300;
+                  }
+                }}
+                className="flex items-center px-4 py-2 bg-white text-pink-600 font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-pink-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Sau
+                <Icons.ChevronRight size={20} className="ml-2" />
+              </motion.button>
+            </div>
+          )}
+
+          {/* Categories Grid with Images */}
+          <div 
+            id="categories-container"
+            className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
+            style={{ scrollBehavior: 'smooth' }}
+          >
             {categories.map((category, index) => {
               // Define colors and icons for each category
               const getCategoryStyle = (categoryName: string) => {
@@ -327,38 +422,44 @@ const Products: React.FC = () => {
                   return {
                     bgGradient: 'from-orange-100 to-yellow-100',
                     iconBg: 'bg-orange-500',
-                    icon: Icons.Package
+                    icon: Icons.Package,
+                    imageUrl: '/images/banner1.avif'
                   };
                 } else if (name.includes('kem') || name.includes('bánh kem')) {
                   return {
                     bgGradient: 'from-pink-100 to-purple-100',
                     iconBg: 'bg-pink-500',
-                    icon: Icons.Gift
+                    icon: Icons.Gift,
+                    imageUrl: '/images/banner2.avif'
                   };
                 } else if (name.includes('mì') || name.includes('bánh mì')) {
                   return {
                     bgGradient: 'from-amber-100 to-orange-100',
                     iconBg: 'bg-amber-500',
-                    icon: Icons.Package
+                    icon: Icons.Package,
+                    imageUrl: '/images/banner3.avif'
                   };
                 } else if (name.includes('ngọt') || name.includes('bánh ngọt')) {
                   return {
                     bgGradient: 'from-purple-100 to-pink-100',
                     iconBg: 'bg-purple-500',
-                    icon: Icons.Heart
+                    icon: Icons.Heart,
+                    imageUrl: '/images/banner4.avif'
                   };
                 } else if (name.includes('sôcla') || name.includes('socola')) {
                   return {
                     bgGradient: 'from-brown-100 to-orange-100',
                     iconBg: 'bg-brown-500',
-                    icon: Icons.CheckCircle
+                    icon: Icons.CheckCircle,
+                    imageUrl: '/images/banner5.avif'
                   };
                 } else {
                   // Default style
                   return {
                     bgGradient: 'from-gray-100 to-blue-100',
                     iconBg: 'bg-gray-500',
-                    icon: Icons.Package
+                    icon: Icons.Package,
+                    imageUrl: '/images/default-cake.jpg'
                   };
                 }
               };
@@ -367,25 +468,68 @@ const Products: React.FC = () => {
               const IconComponent = style.icon;
 
               return (
-                <div 
-                key={category.id}
-                onClick={() => handleCategoryChange(category.id)}
-                  className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer ${
-                    selectedCategory === category.id ? 'border-2 border-orange-300' : ''
+                <motion.div 
+                  key={category.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.6 }}
+                  onClick={() => handleCategoryChange(category.id)}
+                  className={`min-w-[280px] bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 cursor-pointer ${
+                    selectedCategory === category.id ? 'ring-4 ring-pink-300' : ''
                   }`}
                 >
-                  <div className={`aspect-square bg-gradient-to-br ${style.bgGradient} flex items-center justify-center`}>
-                    <div className="text-center">
-                      <div className={`w-12 h-12 ${style.iconBg} rounded-full flex items-center justify-center mx-auto mb-2`}>
-                        <IconComponent className="text-white" size={24} />
+                  {/* Category Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={category.image_url || style.imageUrl}
+                      alt={category.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = style.imageUrl;
+                      }}
+                    />
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                    
+                    {/* Category Badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                        {category.product_count || 0} sản phẩm
+                      </span>
+                    </div>
+
+                    {/* Icon Overlay */}
+                    <div className="absolute top-4 left-4">
+                      <div className={`w-10 h-10 ${style.iconBg} rounded-full flex items-center justify-center shadow-lg`}>
+                        <IconComponent className="text-white" size={20} />
                       </div>
-                      <p className="text-sm font-medium text-gray-800">{category.name}</p>
-                      {category.description && (
-                        <p className="text-xs text-gray-600 mt-1">{category.description}</p>
-                      )}
                     </div>
                   </div>
-                </div>
+
+                  {/* Category Info */}
+                  <div className="p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-pink-600 transition-colors duration-300">
+                      {category.name}
+                    </h3>
+                    {category.description && (
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {category.description}
+                      </p>
+                    )}
+                    
+                    {/* Action Button */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-pink-600 font-semibold text-sm">
+                        Xem sản phẩm
+                      </span>
+                      <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <Icons.ArrowRight className="text-white" size={16} />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               );
             })}
           </div>
@@ -394,7 +538,7 @@ const Products: React.FC = () => {
 
 
         {/* Featured Products Section */}
-        {activeFilter === 'all' && featuredProducts.length > 0 && (
+        {activeFilter === 'all' && !selectedCategory && !searchQuery && featuredProducts.length > 0 && (
           <section className="mb-12">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -415,7 +559,7 @@ const Products: React.FC = () => {
         )}
 
         {/* Hot Products Section */}
-        {activeFilter === 'all' && hotProducts.length > 0 && (
+        {activeFilter === 'all' && !selectedCategory && !searchQuery && hotProducts.length > 0 && (
           <section className="mb-12">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -445,13 +589,21 @@ const Products: React.FC = () => {
             className="text-center mb-8"
           >
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              {activeFilter === 'featured' ? 'Sản Phẩm Nổi Bật' : 
-               activeFilter === 'hot' ? 'Sản Phẩm Bán Chạy' : 'Tất Cả Sản Phẩm'}
+              {searchQuery ? 
+                `Kết quả tìm kiếm cho "${searchQuery}"` :
+                selectedCategory ? 
+                `${categories.find(cat => cat.id === selectedCategory)?.name || 'Sản Phẩm'}` :
+                activeFilter === 'featured' ? 'Sản Phẩm Nổi Bật' : 
+                activeFilter === 'hot' ? 'Sản Phẩm Bán Chạy' : 'Tất Cả Sản Phẩm'}
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              {activeFilter === 'featured' ? 'Những sản phẩm được chọn lọc kỹ lưỡng' :
-               activeFilter === 'hot' ? 'Những sản phẩm được khách hàng yêu thích' :
-               'Khám phá toàn bộ bộ sưu tập bánh ngọt của chúng tôi'}
+              {searchQuery ? 
+                `Tìm thấy ${products.length} sản phẩm phù hợp với từ khóa "${searchQuery}"` :
+                selectedCategory ? 
+                `Khám phá các sản phẩm ${categories.find(cat => cat.id === selectedCategory)?.name?.toLowerCase() || ''} thơm ngon` :
+                activeFilter === 'featured' ? 'Những sản phẩm được chọn lọc kỹ lưỡng' :
+                activeFilter === 'hot' ? 'Những sản phẩm được khách hàng yêu thích' :
+                'Khám phá toàn bộ bộ sưu tập bánh ngọt của chúng tôi'}
             </p>
           </motion.div>
 

@@ -55,7 +55,7 @@ app.use('/api/admin/categories', categoryRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminOrdersRoutes);
 app.use('/api/admin', adminReviewsRoutes);
-app.use('/api/admin', bannersRoutes);
+app.use('/api', bannersRoutes);
 app.use('/api/admin', dashboardRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/admin/blog', blogRoutes);

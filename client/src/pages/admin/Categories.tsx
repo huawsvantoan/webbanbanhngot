@@ -13,7 +13,7 @@ interface Category {
   image_url?: string;
   created_at: string;
   updated_at: string;
-  productCount?: number;
+  product_count?: number;
   isDeleted: number;
 }
 
@@ -217,7 +217,7 @@ const AdminCategories: React.FC = () => {
                   <p className="text-gray-600 mb-4 line-clamp-2">{category.description}</p>
                 )}
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                  <span>{category.productCount || 0} sản phẩm</span>
+                  <span>{category.product_count || 0} sản phẩm</span>
                   <span>{new Date(category.created_at).toLocaleDateString('vi-VN')}</span>
                 </div>
                 <div className="flex items-center gap-2">
