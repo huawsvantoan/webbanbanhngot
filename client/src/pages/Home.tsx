@@ -871,9 +871,7 @@ const Home: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link to="/contact" className="inline-block bg-white/25 backdrop-blur-md text-white px-4 py-2 rounded-full font-semibold hover:bg-white/35 transition-all duration-300 border border-white/40 shadow-lg">
-                  Liên Hệ
-            </Link>
+
               </motion.div>
             </motion.div>
             

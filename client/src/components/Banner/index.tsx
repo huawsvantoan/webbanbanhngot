@@ -20,7 +20,9 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
     const fetchBanners = async () => {
       try {
         setLoading(true);
+        console.log('Fetching banners...');
         const data = await getPublicBanners();
+        console.log('Banners loaded:', data);
         setBanners(data);
         setError(null);
       } catch (err: any) {
@@ -81,6 +83,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
   }
 
   if (banners.length === 0) {
+    console.log('No banners to display');
     return null;
   }
 

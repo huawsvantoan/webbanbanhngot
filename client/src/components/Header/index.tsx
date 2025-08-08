@@ -72,7 +72,6 @@ const Header: React.FC = () => {
           <NavLink to="/" className={navLinkClasses}>
             Trang Chủ
           </NavLink>
-
           <NavLink to="/products" className={navLinkClasses}>
             Sản Phẩm
           </NavLink>

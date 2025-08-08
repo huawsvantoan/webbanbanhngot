@@ -5,13 +5,13 @@ import { protect, authorize } from '../middleware/auth';
 const router = express.Router();
 
 // Public routes
-router.get('/banners', getPublicBanners);
+router.get('/', getPublicBanners);
 
-// Admin routes
-router.route('/admin/banners').get(protect, authorize(['admin']), getBanners).post(protect, authorize(['admin']), createBanner);
-router.get('/admin/banners/deleted', protect, authorize(['admin']), getDeletedBanners);
-router.route('/admin/banners/:id').put(protect, authorize(['admin']), updateBanner).delete(protect, authorize(['admin']), softDeleteBanner);
-router.delete('/admin/banners/:id/hard', protect, authorize(['admin']), hardDeleteBanner);
-router.post('/admin/banners/:id/restore', protect, authorize(['admin']), restoreBanner);
+// Admin routes - specific routes first
+router.route('/admin').get(protect, authorize(['admin']), getBanners).post(protect, authorize(['admin']), createBanner);
+router.get('/admin/deleted', protect, authorize(['admin']), getDeletedBanners);
+router.delete('/admin/:id/hard', protect, authorize(['admin']), hardDeleteBanner);
+router.post('/admin/:id/restore', protect, authorize(['admin']), restoreBanner);
+router.route('/admin/:id').put(protect, authorize(['admin']), updateBanner).delete(protect, authorize(['admin']), softDeleteBanner);
 
 export default router; 

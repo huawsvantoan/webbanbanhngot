@@ -198,7 +198,7 @@ const AdminBannerManagement: React.FC = () => {
 
   const handleRestore = async (banner: Banner) => {
     try {
-      const response = await fetch(`/api/admin/banners/${banner.id}/restore`, {
+      const response = await fetch(`http://localhost:5000/api/banners/admin/${banner.id}/restore`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -219,7 +219,7 @@ const AdminBannerManagement: React.FC = () => {
   const handleHardDelete = async (banner: Banner) => {
     if (window.confirm(`Bạn có chắc muốn xóa VĨNH VIỄN banner "${banner.title}"? Hành động này không thể hoàn tác!`)) {
       try {
-        const response = await fetch(`/api/admin/banners/${banner.id}/hard`, {
+        const response = await fetch(`http://localhost:5000/api/banners/admin/${banner.id}/hard`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`

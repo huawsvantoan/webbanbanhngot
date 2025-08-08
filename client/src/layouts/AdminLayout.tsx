@@ -28,10 +28,11 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/categories', label: 'Danh Mục', icon: Icons.FolderOpen },
     { path: '/admin/orders', label: 'Đơn Hàng', icon: Icons.ShoppingCart },
     { path: '/admin/users', label: 'Người Dùng', icon: Icons.User },
+    { path: '/admin/contacts', label: 'Liên Hệ', icon: Icons.Mail },
     { path: '/admin/reviews', label: 'Đánh Giá', icon: Icons.MessageSquare },
     { path: '/admin/banners', label: 'Banner', icon: Icons.Gift },
     { path: '/admin/blog', label: 'Bài Viết', icon: Icons.MessageSquare },
-    { path: '/admin/contacts', label: 'Liên Hệ', icon: Icons.Mail },
+    
   ];
 
   return (

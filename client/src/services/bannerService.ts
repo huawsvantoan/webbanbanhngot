@@ -35,29 +35,29 @@ export const getPublicBanners = async (): Promise<Banner[]> => {
 
 // Get all banners (admin only) - bao gồm cả đã xóa mềm
 export const getBanners = async (): Promise<Banner[]> => {
-  const response = await api.get('/admin/banners');
+  const response = await api.get('/banners/admin');
   return response.data;
 };
 
 // Create new banner (admin only)
 export const createBanner = async (data: CreateBannerData): Promise<Banner> => {
-  const response = await api.post('/admin/banners', data);
+  const response = await api.post('/banners/admin', data);
   return response.data;
 };
 
 // Update banner (admin only)
 export const updateBanner = async (id: number, data: Partial<CreateBannerData>): Promise<Banner> => {
-  const response = await api.put(`/admin/banners/${id}`, data);
+  const response = await api.put(`/banners/admin/${id}`, data);
   return response.data;
 };
 
 // Delete banner (admin only)
 export const deleteBanner = async (id: number): Promise<void> => {
-  await api.delete(`/admin/banners/${id}`);
+  await api.delete(`/banners/admin/${id}`);
 };
 
 // Toggle banner active status (admin only)
 export const toggleBannerActive = async (id: number, isActive: boolean): Promise<Banner> => {
-  const response = await api.put(`/admin/banners/${id}`, { is_active: isActive });
+  const response = await api.put(`/banners/admin/${id}`, { is_active: isActive });
   return response.data;
 }; 
