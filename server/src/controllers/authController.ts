@@ -366,6 +366,11 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
           <p>Mã có hiệu lực trong 15 phút.</p>
           <p>Nếu không phải bạn, hãy bỏ qua email này.</p>`
       });
+      // Trong môi trường dev, trả kèm mã để test khi chưa cấu hình SMTP
+      if (process.env.NODE_ENV !== 'production') {
+        res.json({ message: 'Nếu email tồn tại, mã xác thực đã được gửi.', devCode: code });
+        return;
+      }
     }
     res.json({ message: 'Nếu email tồn tại, mã xác thực đã được gửi.' });
   } catch (error) {
