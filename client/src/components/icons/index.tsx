@@ -50,7 +50,7 @@ import {
   FiCheck,
   FiInfo
 } from 'react-icons/fi';
-import { FaMapPin, FaPhone, FaEnvelope, FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaGoogle } from 'react-icons/fa';
+import { FaMapPin, FaPhone, FaEnvelope, FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaGoogle, FaBirthdayCake } from 'react-icons/fa';
 
 export const Icons = {
   ShoppingBag: FiShoppingBag as FC<IconBaseProps>,
@@ -91,6 +91,7 @@ export const Icons = {
   Lock: FiLock as FC<IconBaseProps>,
   Loader: FiLoader as FC<IconBaseProps>,
   Google: FaGoogle as FC<IconBaseProps>,
+  Cake: FaBirthdayCake as FC<IconBaseProps>,
   // Admin icons
   BarChart3: FiBarChart as FC<IconBaseProps>,
   FolderOpen: FiFolder as FC<IconBaseProps>,

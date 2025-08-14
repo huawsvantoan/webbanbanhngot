@@ -11,8 +11,9 @@ interface OrderItem {
   product_id: number;
   quantity: number;
   price: number;
-  product_name: string;
+  product_name?: string;
   product_image?: string;
+  product_description?: string;
 }
 
 interface Order {
@@ -307,23 +308,65 @@ const OrderDetail: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Sản phẩm trong đơn</h2>
               <div className="space-y-4">
-                {order.items.map((item) => (
+                {order.items.map((item) => {
+                  // Xử lý đường dẫn ảnh sản phẩm
+                  const getProductImage = (imagePath?: string) => {
+                    if (!imagePath) return '/images/default-cake.jpg';
+                    
+                    // Nếu đường dẫn bắt đầu bằng http hoặc https, sử dụng trực tiếp
+                    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                      return imagePath;
+                    }
+                    
+                    // Nếu đường dẫn bắt đầu bằng /, sử dụng trực tiếp
+                    if (imagePath.startsWith('/')) {
+                      return imagePath;
+                    }
+                    
+                    // Nếu không có / ở đầu, thêm /images/
+                    if (!imagePath.startsWith('/images/')) {
+                      return `/images/${imagePath}`;
+                    }
+                    
+                    return imagePath;
+                  };
+
+                  // Xử lý tên sản phẩm
+                  const getProductName = (name?: string) => {
+                    if (name && name.trim()) {
+                      return name;
+                    }
+                    return `Sản phẩm #${item.product_id}`;
+                  };
+
+                  return (
                   <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                    <img
-                      src={item.product_image || '/images/default-cake.jpg'}
-                      alt={item.product_name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{item.product_name}</h3>
+                      <div className="flex-shrink-0">
+                        <img
+                          src={getProductImage(item.product_image)}
+                          alt={getProductName(item.product_name)}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            // Fallback khi ảnh lỗi
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/images/default-cake.jpg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">{getProductName(item.product_name)}</h3>
                       <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
+                        {item.product_description && (
+                          <p className="text-xs text-gray-500 truncate mt-1">{item.product_description}</p>
+                        )}
                     </div>
-                    <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                       <p className="font-medium text-gray-900">{Number(item.price).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
                       <p className="text-sm text-gray-600">Tổng: {(Number(item.price) * item.quantity).toLocaleString('vi-VN', {style: 'currency', currency: 'VND'})}</p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </motion.div>

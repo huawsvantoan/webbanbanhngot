@@ -87,36 +87,70 @@ const Login: React.FC = () => {
       </nav>
 
       <div className="flex flex-1">
-        {/* Left side - Image */}
+        {/* Left side - Enhanced Design */}
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
-          className="hidden lg:block lg:w-1/2 relative"
+          className="hidden lg:block lg:w-1/2 relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/90 to-pink-600/90 z-10" />
-          <img
-                            src="/images/default-cake.jpg"
-            alt="Login"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-white p-12">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
+          {/* Background with beautiful gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-400 via-rose-500 to-purple-600" />
+          
+          {/* Animated decorative elements */}
+          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-32 h-32 bg-white/5 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/3 right-10 w-16 h-16 bg-white/15 rounded-full blur-lg animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute bottom-1/3 left-20 w-12 h-12 bg-white/8 rounded-full blur-lg animate-pulse" style={{ animationDelay: '0.5s' }} />
+          
+          {/* Main content */}
+          <div className="relative z-20 flex flex-col justify-center items-center text-white p-12 h-full">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl font-bold mb-6 text-center"
+              className="text-center max-w-lg"
             >
-              Chào Mừng Trở Lại!
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-lg text-center max-w-md"
-            >
-              Đăng nhập để khám phá thế giới bánh ngọt tuyệt vời của chúng tôi
-            </motion.p>
+              <div className="mb-8">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+                  className="w-28 h-28 bg-white/25 rounded-full flex items-center justify-center mx-auto mb-8 backdrop-blur-sm shadow-2xl border border-white/20"
+                >
+                  <Icons.Cake className="w-14 h-14 text-white drop-shadow-lg" />
+                </motion.div>
+              </div>
+              
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="text-6xl font-bold mb-8 text-center leading-tight drop-shadow-lg"
+              >
+                Chào Mừng Trở Lại!
+              </motion.h2>
+              
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="text-xl text-center leading-relaxed opacity-95 font-medium"
+              >
+                Đăng nhập để khám phá thế giới bánh ngọt tuyệt vời của chúng tôi
+              </motion.p>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0 }}
+                className="mt-10 flex justify-center space-x-3"
+              >
+                <div className="w-4 h-4 bg-white/40 rounded-full animate-bounce" />
+                <div className="w-4 h-4 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-4 h-4 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+              </motion.div>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -125,20 +159,23 @@ const Login: React.FC = () => {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
-          className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50"
+          className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-white"
         >
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-md">
             <div className="text-center mb-8">
               <motion.h1
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-3xl font-bold text-gray-800 mb-2"
+                className="text-4xl font-bold text-gray-800 mb-4"
               >
                 Đăng Nhập
               </motion.h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-lg mb-2">
+                Vui lòng đăng nhập vào tài khoản của bạn
+              </p>
+              <p className="text-gray-500">
                 Chưa có tài khoản?{' '}
-                <Link to="/register" className="text-pink-600 hover:text-pink-700 font-semibold">
+                <Link to="/register" className="text-pink-600 hover:text-pink-700 font-semibold transition-colors">
                   Đăng ký ngay
                 </Link>
               </p>
@@ -229,7 +266,7 @@ const Login: React.FC = () => {
                     Ghi nhớ đăng nhập
                   </label>
                 </div>
-                <Link to="/forgot-password" className="text-sm font-medium text-pink-600 hover:text-pink-700">
+                <Link to="/forgot-password" className="text-sm font-medium text-pink-600 hover:text-pink-700 transition-colors">
                   Quên mật khẩu?
                 </Link>
               </div>
@@ -237,7 +274,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200 ${
+                className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-white bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-all duration-200 transform hover:scale-105 ${
                   isLoading ? 'opacity-75 cursor-not-allowed' : ''
                 }`}
               >
@@ -250,32 +287,6 @@ const Login: React.FC = () => {
                   'Đăng Nhập'
                 )}
               </button>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-gray-50 text-gray-500">Hoặc đăng nhập với</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200"
-                >
-                  <Icons.FacebookF className="h-5 w-5 text-blue-600 mr-2" />
-                  Facebook
-                </button>
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200"
-                >
-                  <Icons.Google className="h-5 w-5 text-red-600 mr-2" />
-                  Google
-                </button>
-              </div>
             </form>
           </div>
         </motion.div>

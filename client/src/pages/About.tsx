@@ -24,11 +24,11 @@ const About: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="order-2 lg:order-1"
           >
-            <img 
-              src="/images/đầu bếp 1.jpg" 
-              alt="About Cake Shop" 
-              className="rounded-2xl shadow-xl w-full h-auto max-h-[500px] object-cover"
-            />
+				<img 
+					src="/images/h1.jpg" 
+					alt="About Cake Shop" 
+					className="rounded-2xl shadow-xl w-full h-auto max-h-[500px] object-cover"
+				/>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 50 }}
@@ -51,6 +51,35 @@ const About: React.FC = () => {
             </p>
           </motion.div>
         </div>
+
+		{/* Gallery Section */}
+		<motion.div
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.6, delay: 0.9 }}
+			className="text-center mb-8"
+		>
+			<h2 className="text-3xl font-extrabold text-gray-800 mb-3">Khoảnh Khắc Ngọt Ngào</h2>
+			<p className="text-gray-600 max-w-2xl mx-auto">Một vài hình ảnh tại cửa hàng và sản phẩm nổi bật của chúng tôi.</p>
+		</motion.div>
+
+		<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+			{['/images/h1.jpg','/images/h2.jpg','/images/h3.jpg','/images/h4.jpg'].map((src, index) => (
+				<motion.div
+					key={src}
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
+					className="overflow-hidden rounded-2xl shadow-lg border border-gray-100 bg-white"
+				>
+					<img
+						src={src}
+						alt={`Gallery ${index + 1}`}
+						className="w-full h-56 object-cover hover:scale-105 transition-transform duration-500"
+					/>
+				</motion.div>
+			))}
+		</div>
 
         {/* Mission and Vision Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
@@ -92,26 +121,31 @@ const About: React.FC = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {[1, 2, 3, 4].map((member, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 + 1.2 }}
-              className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100"
-            >
-              <img 
-                src="/images/default-cake.jpg" // Placeholder images
-                alt={`Team Member ${member}`}
-                className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-pink-100"
-              />
-              <h3 className="text-xl font-bold text-gray-800 mb-1">Tên Thành Viên {member}</h3>
-              <p className="text-pink-600 font-semibold mb-3">Vị trí</p>
-              <p className="text-gray-600 text-sm">"Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-              </p>
-            </motion.div>
-          ))}
-        </div>
+  {[
+    { name: "Toàn", role: "Quản lý", img: "/images/toan.jpg" },
+    { name: "Đạt", role: "Giám đốc", img: "/images/dat.jpg" },
+    { name: "Vũ", role: "Nhân viên", img: "/images/vu.jpg" },
+    { name: "Quang", role: "Nhân viên", img: "/images/quang.jpg" }
+  ].map((member, index) => (
+    <motion.div
+      key={index}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: index * 0.1 + 1.2 }}
+      className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100"
+    >
+		<img 
+			src={member.img}
+			alt={member.name}
+			className="w-40 h-40 md:w-44 md:h-44 rounded-full object-cover mx-auto mb-4 border-4 border-pink-100"
+		/>
+      <h3 className="text-xl font-bold text-gray-800 mb-1">{member.name}</h3>
+      <p className="text-pink-600 font-semibold mb-3">{member.role}</p>
+     
+    </motion.div>
+  ))}
+</div>
+
       </div>
     </div>
   );

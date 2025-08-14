@@ -23,6 +23,9 @@ export interface IOrderItem extends RowDataPacket {
   price: number;
   created_at: Date;
   updated_at: Date;
+  product_name?: string;
+  product_image?: string;
+  product_description?: string;
 }
 
 export class Order {
@@ -82,10 +85,12 @@ export class Order {
   }
 
   static async getItems(orderId: number): Promise<IOrderItem[]> {
-    const [rows] = await pool.query<IOrderItem[]>(
-      'SELECT * FROM order_items WHERE order_id = ?',
-      [orderId]
-    );
+    const [rows] = await pool.query<IOrderItem[]>(`
+      SELECT oi.*, p.name as product_name, p.image_url as product_image, p.description as product_description
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+    `, [orderId]);
     return rows;
   }
 
