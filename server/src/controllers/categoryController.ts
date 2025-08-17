@@ -150,8 +150,8 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
       res.status(400).json({ message: 'Tên danh mục phải có ít nhất 3 ký tự' });
       return;
     }
-    if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(name.trim())) {
-      res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
+    if (!/^[a-zA-ZÀ-ỹ0-9_\s:]+$/.test(name.trim())) {
+      res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới, khoảng trắng và dấu hai chấm' });
       return;
     }
     if (description && description.length > 255) {
@@ -190,8 +190,8 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ message: 'Tên danh mục phải có ít nhất 3 ký tự' });
         return;
       }
-      if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(name.trim())) {
-        res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
+      if (!/^[a-zA-ZÀ-ỹ0-9_\s:]+$/.test(name.trim())) {
+        res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới, khoảng trắng và dấu hai chấm' });
         return;
       }
     }

@@ -59,12 +59,14 @@ export const getProfile = createAsyncThunk<
 });
 
 export const updateProfile = createAsyncThunk<
-  void,
+  User,
   Partial<User>,
   { rejectValue: string }
 >('auth/updateProfile', async (data: Partial<User>, { rejectWithValue }) => {
   try {
-    await authService.updateProfile(data);
+    const response = await authService.updateProfile(data);
+    // Backend đã trả về user data mới, không cần gọi getProfile nữa
+    return response.user;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
   }
@@ -109,6 +111,23 @@ const authSlice = createSlice({
     },
     clearError: (state: AuthState) => {
       state.error = null;
+    },
+    initializeAuth: (state: AuthState) => {
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          state.token = token;
+          state.user = user;
+          console.log("Auth initialized from localStorage:", { token: !!token, user: !!user });
+        } catch (error) {
+          console.error("Error parsing user from localStorage:", error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
     },
   },
   extraReducers: (builder: ActionReducerMapBuilder<AuthState>) => {
@@ -157,8 +176,9 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateProfile.fulfilled, (state: AuthState) => {
+      .addCase(updateProfile.fulfilled, (state: AuthState, action: PayloadAction<User>) => {
         state.loading = false;
+        state.user = action.payload;
       })
       .addCase(updateProfile.rejected, (state: AuthState, action) => {
         state.loading = false;
@@ -192,5 +212,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, initializeAuth } = authSlice.actions;
 export default authSlice.reducer; 

@@ -75,14 +75,16 @@ const BlogDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto py-8 max-w-4xl px-4">
+      <div className="container mx-auto py-8 max-w-5xl px-4">
         {/* Breadcrumb */}
         <nav className="mb-8">
           <Link to="/" className="text-gray-500 hover:text-pink-600 transition-colors">Trang chủ</Link>
           <span className="mx-2 text-gray-400">/</span>
           <Link to="/blog" className="text-gray-500 hover:text-pink-600 transition-colors">Bài viết</Link>
           <span className="mx-2 text-gray-400">/</span>
-          <span className="text-gray-700">{post.title}</span>
+          <span className="text-gray-700 truncate max-w-xs md:max-w-md lg:max-w-lg" title={post.title}>
+            {post.title}
+          </span>
         </nav>
 
         {/* Article Header */}
@@ -100,25 +102,25 @@ const BlogDetail: React.FC = () => {
           {/* Article Content */}
           <div className="p-8">
             {/* Title */}
-            <h1 className="text-4xl font-bold text-gray-800 mb-6 leading-tight">
-              {post.title}
-            </h1>
+            <div className="text-center mb-8">
+                             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 leading-tight bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-4 px-2 sm:px-4 break-words">
+                {post.title}
+              </h1>
+              <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
+            </div>
 
             {/* Meta Information */}
             <div className="flex items-center justify-between text-gray-500 text-sm mb-8 pb-6 border-b border-gray-200">
-              <div className="flex items-center space-x-4">
-                <span>📅 {new Date(post.created_at).toLocaleDateString('vi-VN', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}</span>
-                {post.author_name && (
-                  <span>👤 {post.author_name}</span>
-                )}
-                {post.view_count && (
-                  <span>👁️ {post.view_count} lượt xem</span>
-                )}
-              </div>
+                             <div className="flex items-center space-x-4">
+                 <span>📅 {new Date(post.created_at).toLocaleDateString('vi-VN', {
+                   year: 'numeric',
+                   month: 'long',
+                   day: 'numeric'
+                 })}</span>
+                 {post.view_count && (
+                   <span>👁️ {post.view_count} lượt xem</span>
+                 )}
+               </div>
               <div className="text-xs">
                 Cập nhật: {new Date(post.updated_at).toLocaleDateString('vi-VN')}
               </div>

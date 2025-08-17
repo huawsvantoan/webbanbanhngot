@@ -30,13 +30,14 @@ export const getAnalyticsData = asyncHandler(async (req: Request, res: Response)
         dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
     }
 
-    // Get monthly revenue
+    // Get monthly revenue - bao gồm cả đơn hàng đã thanh toán
     const [monthlyRevenueResult] = await pool.execute(`
       SELECT 
         DATE_FORMAT(created_at, '%Y-%m') as month,
         SUM(total_amount) as amount
       FROM orders 
-      WHERE status IN ("delivered", "completed") 
+      WHERE status IN ("delivered", "completed", "paid", "processing") 
+        AND total_amount > 0
         ${dateFilter}
       GROUP BY DATE_FORMAT(created_at, '%Y-%m')
       ORDER BY month DESC
@@ -126,14 +127,15 @@ export const getAnalyticsData = asyncHandler(async (req: Request, res: Response)
       count: parseInt(item.count)
     }));
 
-    // Get revenue by day (last 30 days)
+    // Get revenue by day (last 30 days) - bao gồm cả đơn hàng đã thanh toán
     const [revenueByDayResult] = await pool.execute(`
       SELECT 
         DATE(created_at) as date,
         SUM(total_amount) as amount
       FROM orders 
-      WHERE status IN ("delivered", "completed") 
+      WHERE status IN ("delivered", "completed", "paid", "processing") 
         AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND total_amount > 0
       GROUP BY DATE(created_at)
       ORDER BY date DESC
       LIMIT 30
@@ -151,6 +153,21 @@ export const getAnalyticsData = asyncHandler(async (req: Request, res: Response)
       customerGrowth,
       revenueByDay
     };
+
+    // Debug info
+    console.log('Analytics data:', {
+      monthlyRevenueCount: monthlyRevenue.length,
+      revenueByDayCount: revenueByDay.length,
+      revenueByDayData: revenueByDay,
+      totalMonthlyRevenue: monthlyRevenue.reduce(
+        (sum: number, item: { amount: number }) => sum + (item?.amount ?? 0),
+        0
+      ),
+      totalRevenueByDay: revenueByDay.reduce(
+        (sum: number, item: { amount: number }) => sum + (item?.amount ?? 0),
+        0
+      )
+    });
 
     return res.status(200).json(analyticsData);
   } catch (error) {

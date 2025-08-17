@@ -48,7 +48,8 @@ import {
   FiUpload,
   FiImage,
   FiCheck,
-  FiInfo
+  FiInfo,
+  FiHome
 } from 'react-icons/fi';
 import { FaMapPin, FaPhone, FaEnvelope, FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaGoogle, FaBirthdayCake } from 'react-icons/fa';
 
@@ -108,4 +109,5 @@ export const Icons = {
   Image: FiImage as FC<IconBaseProps>,
   Check: FiCheck as FC<IconBaseProps>,
   Info: FiInfo as FC<IconBaseProps>,
+  Home: FiHome as FC<IconBaseProps>,
 };

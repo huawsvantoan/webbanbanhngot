@@ -1,28 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useAppDispatch } from '../hooks/useAppDispatch';
+import { useAppSelector } from '../hooks/useAppSelector';
+import { fetchProducts, setCurrentPage } from '../features/products/productSlice';
+import { RootState } from '../store';
+import { Product } from '../services/productService';
 import { motion } from 'framer-motion';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/icons';
-import { useAuth } from '../contexts/AuthContext';
-import { Product } from '../types/product';
-import { Category } from '../types/category';
-import api from '../services/api';
 import { CartIconRef } from '../components/Header';
+import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { Category } from '../types/category';
 
 const Products: React.FC = () => {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { products, loading, totalPages, currentPage, total } = useAppSelector((state: RootState) => state.products);
+  const { user } = useAppSelector((state: RootState) => state.auth);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [hotProducts, setHotProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(() => {
+    const categoryParam = searchParams.get('category');
+    return categoryParam ? parseInt(categoryParam) : null;
+  });
   const [activeFilter, setActiveFilter] = useState<'all' | 'featured' | 'hot'>('all');
   const itemsPerPage = 12;
   const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
@@ -58,7 +63,10 @@ const Products: React.FC = () => {
     fetchCategories();
     fetchFeaturedProducts();
     fetchHotProducts();
-  }, []);
+    
+    // Initial products fetch
+    dispatch(fetchProducts({ page: 1, limit: itemsPerPage }));
+  }, [dispatch]);
 
   useEffect(() => {
     const urlSearch = searchParams.get('search') || '';
@@ -72,35 +80,17 @@ const Products: React.FC = () => {
     } else {
       setSelectedCategory(null);
     }
-    
-    setCurrentPage(1);
-  }, [searchParams.get('search'), searchParams.get('category')]);
+  }, [searchParams]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: itemsPerPage.toString(),
-          ...(searchQuery && { search: searchQuery }),
-          ...(selectedCategory && { category: selectedCategory.toString() }),
-          ...(activeFilter === 'featured' && { featured: 'true' }),
-          ...(activeFilter === 'hot' && { hot: 'true' })
-        });
-        const response = await api.get(`/products?${params}`);
-        setProducts(response.data);
-        setTotalPages(Math.ceil(response.data.length / itemsPerPage));
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError('Failed to load products. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, [currentPage, searchQuery, selectedCategory, activeFilter]);
+    // Fetch products using Redux action
+    dispatch(fetchProducts({ 
+      page: currentPage, 
+      limit: itemsPerPage,
+      search: searchQuery,
+      category: selectedCategory || undefined
+    }));
+  }, [dispatch, currentPage, searchQuery, selectedCategory]);
 
   const handleAddToCart = async (productId: number, e: React.MouseEvent, imgElement: HTMLImageElement | null) => {
     if (!user) {
@@ -147,30 +137,66 @@ const Products: React.FC = () => {
 
   const handleCategoryChange = (categoryId: number | null) => {
     setSelectedCategory(categoryId);
-    setCurrentPage(1);
+    dispatch(setCurrentPage(1));
     
     // Cập nhật URL params
     if (categoryId) {
-      setSearchParams({ category: categoryId.toString() });
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('category', categoryId.toString());
+        return newParams;
+      });
     } else {
-      setSearchParams({});
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('category');
+        return newParams;
+      });
     }
+    
+    // Fetch products for the selected category
+    dispatch(fetchProducts({ 
+      page: 1, 
+      limit: itemsPerPage,
+      category: categoryId || undefined
+    }));
   };
 
   const handleFilterChange = (filter: 'all' | 'featured' | 'hot') => {
     setActiveFilter(filter);
-    setCurrentPage(1);
+    dispatch(setCurrentPage(1));
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
+    dispatch(setCurrentPage(1));
     if (searchTerm.trim()) {
       setSearchQuery(searchTerm.trim());
-      setSearchParams({ search: searchTerm.trim() });
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('search', searchTerm.trim());
+        return newParams;
+      });
+      
+      // Fetch products for the search term
+      dispatch(fetchProducts({ 
+        page: 1, 
+        limit: itemsPerPage,
+        search: searchTerm.trim()
+      }));
     } else {
       setSearchQuery('');
-      setSearchParams({});
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('search');
+        return newParams;
+      });
+      
+      // Fetch all products when clearing search
+      dispatch(fetchProducts({ 
+        page: 1, 
+        limit: itemsPerPage
+      }));
     }
   };
 
@@ -179,8 +205,11 @@ const Products: React.FC = () => {
     setActiveFilter('all');
     setSearchTerm('');
     setSearchQuery('');
-    setSearchParams({});
-    setCurrentPage(1);
+    setSearchParams(new URLSearchParams());
+    dispatch(setCurrentPage(1));
+    
+    // Reload products after clearing filters
+    dispatch(fetchProducts({ page: 1, limit: itemsPerPage }));
   };
 
   const renderProductCard = (product: Product, index: number, isSpecial: boolean = false) => (
@@ -190,7 +219,7 @@ const Products: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       whileHover={{ y: -12, scale: 1.03 }}
-      className={`group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-pink-200 relative ${
+      className={`group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-pink-200 relative flex flex-col h-full ${
         isSpecial ? 'ring-2 ring-pink-200 shadow-pink-100' : ''
       }`}
     >
@@ -203,7 +232,7 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      <Link to={`/products/${product.id}`} className="block">
+      <Link to={`/products/${product.id}`} className="block flex-1">
         <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           <img
             ref={el => imgRefs.current[index] = el}
@@ -253,7 +282,7 @@ const Products: React.FC = () => {
           )}
         </div>
         
-        <div className="p-5">
+        <div className="p-5 flex-1 flex flex-col">
           {/* Product Name */}
           <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 leading-tight group-hover:text-pink-600 transition-colors duration-300">
             {product.name}
@@ -261,44 +290,45 @@ const Products: React.FC = () => {
           
           {/* Description */}
           {product.description && (
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+            <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed flex-1">
               {product.description}
             </p>
           )}
           
           {/* Price Section */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-pink-600">
-                {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
-              </span>
-              {product.original_price && product.original_price > product.price && (
-                <span className="text-sm text-gray-500 line-through">
-                  {product.original_price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+          <div className="mt-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-pink-600">
+                  {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                </span>
+                {product.original_price && product.original_price > product.price && (
+                  <span className="text-sm text-gray-500 line-through">
+                    {product.original_price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                  </span>
+                )}
+              </div>
+              {product.stock <= 10 && product.stock > 0 && (
+                <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full font-medium">
+                  Chỉ còn {product.stock}
                 </span>
               )}
             </div>
-            
-            {/* Stock Indicator */}
-            {product.stock > 0 && product.stock <= 10 && (
-              <span className="text-xs text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded-full">
-                Chỉ còn {product.stock}
-              </span>
-            )}
           </div>
         </div>
       </Link>
       
       {/* Add to Cart Button */}
-      <div className="px-5 pb-5">
+      <div className="px-5 pb-5 mt-auto">
         <button
           onClick={e => handleAddToCart(product.id, e, imgRefs.current[index])}
           disabled={product.stock === 0}
-          className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group ${
+          className={`w-full h-12 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group flex items-center justify-center text-base leading-none min-h-[48px] max-h-[48px] ${
             product.stock === 0
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
           }`}
+          style={{ height: '48px' }}
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
             {product.stock === 0 ? (
@@ -607,7 +637,17 @@ const Products: React.FC = () => {
             </p>
           </motion.div>
 
-          {products.length === 0 ? (
+          {loading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-pink-600 border-t-transparent mx-auto mb-4"></div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Đang tải sản phẩm...</h3>
+              <p className="text-gray-500">Vui lòng chờ trong giây lát</p>
+            </motion.div>
+          ) : !products || products.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -625,51 +665,128 @@ const Products: React.FC = () => {
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product: Product, idx: number) => renderProductCard(product, idx))}
+              {products.map((product: Product, idx: number) => (
+                <div key={product.id} className="flex flex-col h-full">
+                  {renderProductCard(product, idx)}
+                </div>
+              ))}
             </div>
           )}
         </section>
 
-        {/* Pagination */}
+        {/* Enhanced Pagination */}
         {totalPages > 1 && (
-          <div className="mt-12 flex justify-center">
-            <nav className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
-                  currentPage === 1
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
-                }`}
-              >
-                Trước
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <div className="mt-12">
+            {/* Pagination Info */}
+            <div className="text-center mb-6">
+              <p className="text-gray-600">
+                Hiển thị {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, total)} trong tổng số {total} sản phẩm
+              </p>
+            </div>
+            
+            {/* Pagination Controls */}
+            <div className="flex justify-center">
+              <nav className="flex items-center gap-2 bg-white rounded-2xl shadow-lg p-2">
+                {/* Previous Button */}
                 <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
-                    currentPage === page
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+                  onClick={() => dispatch(setCurrentPage(Math.max(currentPage - 1, 1)))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-pink-50 hover:text-pink-600 shadow-sm'
                   }`}
                 >
-                  {page}
+                  <Icons.ChevronLeft size={16} />
+                  Trước
                 </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
-                  currentPage === totalPages
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
-                }`}
-              >
-                Sau
-              </button>
-            </nav>
+                
+                {/* Page Numbers */}
+                {(() => {
+                  const pages = [];
+                  const maxVisiblePages = 7;
+                  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                  
+                  if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+                  
+                  // First page
+                  if (startPage > 1) {
+                    pages.push(
+                      <button
+                        key={1}
+                        onClick={() => dispatch(setCurrentPage(1))}
+                        className="px-4 py-2 rounded-xl font-semibold transition-all duration-300 bg-white text-gray-700 hover:bg-pink-50 hover:text-pink-600 shadow-sm"
+                      >
+                        1
+                      </button>
+                    );
+                    if (startPage > 2) {
+                      pages.push(
+                        <span key="ellipsis1" className="px-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                  }
+                  
+                  // Middle pages
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <button
+                        key={i}
+                        onClick={() => dispatch(setCurrentPage(i))}
+                        className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
+                          currentPage === i
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
+                            : 'bg-white text-gray-700 hover:bg-pink-50 hover:text-pink-600 shadow-sm'
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+                  
+                  // Last page
+                  if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                      pages.push(
+                        <span key="ellipsis2" className="px-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    pages.push(
+                      <button
+                        key={totalPages}
+                        onClick={() => dispatch(setCurrentPage(totalPages))}
+                        className="px-4 py-2 rounded-xl font-semibold transition-all duration-300 bg-white text-gray-700 hover:bg-pink-50 hover:text-pink-600 shadow-sm"
+                      >
+                        {totalPages}
+                      </button>
+                    );
+                  }
+                  
+                  return pages;
+                })()}
+                
+                {/* Next Button */}
+                <button
+                  onClick={() => dispatch(setCurrentPage(Math.min(currentPage + 1, totalPages)))}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${
+                    currentPage === totalPages
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-pink-50 hover:text-pink-600 shadow-sm'
+                  }`}
+                >
+                  Sau
+                  <Icons.ChevronRight size={16} />
+                </button>
+              </nav>
+            </div>
           </div>
         )}
       </div>

@@ -23,7 +23,7 @@ router.post('/', upload.single('image'), (req, res) => {
   }
   // Trả về đường dẫn ảnh để client lưu vào DB
   const imageUrl = `/uploads/images/${req.file.filename}`;
-  return res.json({ imageUrl });
+  return res.json({ image_url: imageUrl });
 });
 
 export default router; 

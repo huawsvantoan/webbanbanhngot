@@ -25,7 +25,7 @@ const About: React.FC = () => {
             className="order-2 lg:order-1"
           >
 				<img 
-					src="/images/h1.jpg" 
+					src="/images/cakeshop.png" 
 					alt="About Cake Shop" 
 					className="rounded-2xl shadow-xl w-full h-auto max-h-[500px] object-cover"
 				/>
@@ -64,7 +64,7 @@ const About: React.FC = () => {
 		</motion.div>
 
 		<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-			{['/images/h1.jpg','/images/h2.jpg','/images/h3.jpg','/images/h4.jpg'].map((src, index) => (
+			{['/images/b1.png','/images/b2.png','/images/b3.png','/images/b4.jpg'].map((src, index) => (
 				<motion.div
 					key={src}
 					initial={{ opacity: 0, y: 20 }}

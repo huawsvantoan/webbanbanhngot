@@ -57,23 +57,22 @@ const AdminBannerManagement: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      // Upload file lên server
+      // Upload file lên server sử dụng API service
       const response = await fetch('http://localhost:5000/api/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: formData
       });
       
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
       }
       
       const result = await response.json();
+      console.log('Upload result:', result); // Debug log
       
       // Cập nhật đường dẫn ảnh trong form
-      formik.setFieldValue('image_url', result.imageUrl);
+      formik.setFieldValue('image_url', result.image_url);
       toast.success('Upload ảnh thành công!');
     } catch (error) {
       console.error('Upload error:', error);

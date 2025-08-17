@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAppSelector } from '../hooks/useAppSelector';
-import authService from '../services/authService';
 
 // Layout components
 import MainLayout from '../layouts/MainLayout';
@@ -48,16 +47,47 @@ import AdminContacts from '../pages/admin/Contacts';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = authService.isAuthenticated();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+  const { user, loading } = useAppSelector((state) => state.auth);
+  
+  // Nếu đang loading, hiển thị loading spinner
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Nếu có user thì cho phép truy cập
+  return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
 // Admin Route component
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = authService.isAuthenticated();
-  const user = authService.getCurrentUser();
-  console.log("AdminRoute check:", { isAuthenticated, userRole: user?.role });
-  return (isAuthenticated && user?.role === 'admin') ? <>{children}</> : <Navigate to="/login" />;
+  const { user, loading } = useAppSelector((state) => state.auth);
+  
+  // Nếu đang loading, hiển thị loading spinner
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Đang kiểm tra quyền admin...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Kiểm tra user và role
+  const isAuthenticated = !!user;
+  const isAdmin = user?.role === 'admin';
+  
+  console.log("AdminRoute check:", { isAuthenticated, userRole: user?.role, isAdmin });
+  
+  return (isAuthenticated && isAdmin) ? <>{children}</> : <Navigate to="/login" />;
 };
 
 const AppRoutes: React.FC = () => {

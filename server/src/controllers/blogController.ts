@@ -230,26 +230,43 @@ export const deleteBlogPostPermanent = asyncHandler(async (req: Request, res: Re
 // @route   GET /api/blog
 // @access  Public
 export const getBlogs = asyncHandler(async (req: Request, res: Response) => {
-  const posts = await BlogPost.findAll(false); // Chỉ lấy bài viết đã publish
+  const page = req.query.page ? Number(req.query.page) : 1;
+  const limit = req.query.limit ? Number(req.query.limit) : 9;
+  const offset = (page - 1) * limit;
+  
+  // Lấy tất cả bài viết đã publish
+  const allPosts = await BlogPost.findAll(false);
+  const publishedPosts = allPosts.filter(post => post.status === 'published');
+  
+  // Tính toán phân trang
+  const total = publishedPosts.length;
+  const totalPages = Math.ceil(total / limit);
+  const startIndex = offset;
+  const endIndex = startIndex + limit;
+  const paginatedPosts = publishedPosts.slice(startIndex, endIndex);
   
   // Map lại dữ liệu cho đúng FE mong đợi
-  const mapped = posts
-    .filter(post => post.status === 'published')
-    .map(post => ({
-      id: post.id,
-      title: post.title,
-      content: post.content,
-      excerpt: post.excerpt || post.content?.slice(0, 100) || '',
-      image: post.image_url,
-      status: post.status,
-      author_id: post.user_id,
-      author_name: post.author_name || 'Không rõ',
-      created_at: post.created_at,
-      updated_at: post.updated_at,
-      tags: Array.isArray(post.tags) ? post.tags : (typeof post.tags === 'string' ? JSON.parse(post.tags || '[]') : []),
-      view_count: post.view_count || 0,
-      isDeleted: post.isDeleted,
-    }));
+  const mapped = paginatedPosts.map(post => ({
+    id: post.id,
+    title: post.title,
+    content: post.content,
+    excerpt: post.excerpt || post.content?.slice(0, 100) || '',
+    image: post.image_url,
+    status: post.status,
+    author_id: post.user_id,
+    author_name: post.author_name || 'Không rõ',
+    created_at: post.created_at,
+    updated_at: post.updated_at,
+    tags: Array.isArray(post.tags) ? post.tags : (typeof post.tags === 'string' ? JSON.parse(post.tags || '[]') : []),
+    view_count: post.view_count || 0,
+    isDeleted: post.isDeleted,
+  }));
   
-  return res.status(200).json(mapped);
+  return res.status(200).json({
+    data: mapped,
+    total,
+    totalPages,
+    currentPage: page,
+    limit
+  });
 }); 

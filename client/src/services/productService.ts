@@ -16,9 +16,23 @@ export interface UpdateProductData extends Partial<CreateProductData> {
   id: number;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+}
+
 const productService = {
-  async getAllProducts(): Promise<Product[]> {
-    const response = await api.get<Product[]>('/products');
+  async getAllProducts(page: number = 1, limit: number = 12, search?: string, category?: number): Promise<PaginatedResponse<Product>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    if (search) params.append('search', search);
+    if (category) params.append('category', category.toString());
+    
+    const response = await api.get<PaginatedResponse<Product>>(`/products?${params.toString()}`);
     return response.data;
   },
 
@@ -27,13 +41,33 @@ const productService = {
     return response.data;
   },
 
-  async getProductsByCategory(categoryId: number): Promise<Product[]> {
-    const response = await api.get<Product[]>(`/products/category/${categoryId}`);
+  async getProductsByCategory(categoryId: number, page: number = 1, limit: number = 12): Promise<PaginatedResponse<Product>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    params.append('category', categoryId.toString());
+    
+    const response = await api.get<PaginatedResponse<Product>>(`/products?${params.toString()}`);
     return response.data;
   },
 
-  async searchProducts(query: string): Promise<Product[]> {
-    const response = await api.get<Product[]>(`/products/search?query=${encodeURIComponent(query)}`);
+  async searchProducts(query: string, page: number = 1, limit: number = 12): Promise<PaginatedResponse<Product>> {
+    const params = new URLSearchParams();
+    params.append('search', query);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    
+    const response = await api.get<PaginatedResponse<Product>>(`/products?${params.toString()}`);
+    return response.data;
+  },
+
+  async getFeaturedProducts(limit: number = 4): Promise<Product[]> {
+    const response = await api.get<Product[]>(`/products/featured?limit=${limit}`);
+    return response.data;
+  },
+
+  async getHotProducts(limit: number = 4): Promise<Product[]> {
+    const response = await api.get<Product[]>(`/products/hot?limit=${limit}`);
     return response.data;
   },
 

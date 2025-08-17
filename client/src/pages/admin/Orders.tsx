@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { Icons } from '../../components/icons';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { orderSchema, OrderFormData } from '../../validations/orderSchema';
 
 interface Order {
   id: number;
@@ -116,16 +117,26 @@ const AdminOrders: React.FC = () => {
 
   // Create Order Modal Component
   const CreateOrderModal = () => {
-    const [customerName, setCustomerName] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
-    const [customerAddress, setCustomerAddress] = useState('');
+    // Form data state
+    const [formData, setFormData] = useState<OrderFormData>({
+      customer_name: '',
+      customer_phone: '',
+      customer_address: '',
+      payment_method: 'cash',
+      products: [],
+      total_amount: 0
+    });
+
+    // Validation states
+    const [errors, setErrors] = useState<Partial<OrderFormData>>({});
+    const [touched, setTouched] = useState<Partial<OrderFormData>>({});
+
     const [selectedProducts, setSelectedProducts] = useState<Array<{
       product_id: number | null;
       name: string;
       price: number;
       quantity: number;
     }>>([]);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState<Array<{
       id: number;
@@ -138,10 +149,47 @@ const AdminOrders: React.FC = () => {
       fetchProducts();
     }, []);
 
+    // Validation functions
+    const validateField = async (field: keyof OrderFormData, value: any) => {
+      try {
+        await orderSchema.validateAt(field, { ...formData, [field]: value });
+        setErrors(prev => ({ ...prev, [field]: undefined }));
+      } catch (err: any) {
+        setErrors(prev => ({ ...prev, [field]: err.message }));
+      }
+    };
+
+    const handleChange = (field: keyof OrderFormData, value: any) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+      // Validate ngay khi user nhập liệu
+      validateField(field, value);
+    };
+
+    const handleBlur = (field: keyof OrderFormData) => {
+      setTouched(prev => ({ ...prev, [field]: true }));
+      validateField(field, formData[field]);
+    };
+
+    const validateForm = async () => {
+      try {
+        await orderSchema.validate(formData, { abortEarly: false });
+        setErrors({});
+        return true;
+      } catch (err: any) {
+        const validationErrors: Partial<OrderFormData> = {};
+        err.inner.forEach((error: any) => {
+          validationErrors[error.path as keyof OrderFormData] = error.message;
+        });
+        setErrors(validationErrors);
+        return false;
+      }
+    };
+
     const fetchProducts = async () => {
       try {
-        const response = await api.get('/products');
-        setProducts(response.data);
+        const response = await api.get('/products?limit=1000'); // Lấy tất cả sản phẩm
+        // API bây giờ trả về { data: [...], total, totalPages, ... }
+        setProducts(response.data.data || response.data);
       } catch (error) {
         toast.error('Không thể tải danh sách sản phẩm');
       }
@@ -149,17 +197,34 @@ const AdminOrders: React.FC = () => {
 
     const addProduct = () => {
       if (selectedProducts.length < 10) {
-        setSelectedProducts([...selectedProducts, {
-          product_id: null, // Thay đổi từ 0 thành null
+        const newProduct = {
+          product_id: null,
           name: '',
           price: 0,
           quantity: 1
-        }]);
+        };
+        setSelectedProducts([...selectedProducts, newProduct]);
+        
+        // Update formData products
+        const updatedProducts = [...selectedProducts, newProduct];
+        setFormData(prev => ({ 
+          ...prev, 
+          products: updatedProducts,
+          total_amount: updatedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+        }));
       }
     };
 
     const removeProduct = (index: number) => {
-      setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
+      const updatedProducts = selectedProducts.filter((_, i) => i !== index);
+      setSelectedProducts(updatedProducts);
+      
+      // Update formData products
+      setFormData(prev => ({ 
+        ...prev, 
+        products: updatedProducts,
+        total_amount: updatedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      }));
     };
 
     const updateProduct = (index: number, field: string, value: any) => {
@@ -182,33 +247,39 @@ const AdminOrders: React.FC = () => {
         updated[index] = { ...updated[index], [field]: value };
       }
       setSelectedProducts(updated);
+      
+      // Update formData products
+      setFormData(prev => ({ 
+        ...prev, 
+        products: updated,
+        total_amount: updated.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      }));
+
+      // Validate products sau khi update
+      validateField('products', updated);
     };
 
-    const totalAmount = selectedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
 
     const handleSubmit = async () => {
       console.log('Current selected products:', selectedProducts); // Debug log
       
-      if (!customerName || !customerPhone || selectedProducts.length === 0) {
-        toast.error('Vui lòng điền đầy đủ thông tin');
-        return;
-      }
-
-      if (selectedProducts.some(item => item.product_id === null || item.quantity <= 0)) {
-        console.log('Validation failed - invalid products:', selectedProducts); // Debug log
-        toast.error('Vui lòng chọn sản phẩm và số lượng hợp lệ');
+      // Validate form
+      const isValid = await validateForm();
+      if (!isValid) {
+        toast.error('Vui lòng kiểm tra lại thông tin');
         return;
       }
 
       setLoading(true);
       try {
         const orderData = {
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_address: customerAddress,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          customer_address: formData.customer_address,
           products: selectedProducts,
-          payment_method: paymentMethod,
-          total_amount: totalAmount
+          payment_method: formData.payment_method,
+          total_amount: formData.total_amount
         };
 
         console.log('Sending order data:', orderData); // Debug log
@@ -220,11 +291,17 @@ const AdminOrders: React.FC = () => {
         setShowCreateModal(false);
         
         // Reset form
-        setCustomerName('');
-        setCustomerPhone('');
-        setCustomerAddress('');
+        setFormData({
+          customer_name: '',
+          customer_phone: '',
+          customer_address: '',
+          payment_method: 'cash',
+          products: [],
+          total_amount: 0
+        });
         setSelectedProducts([]);
-        setPaymentMethod('cash');
+        setErrors({});
+        setTouched({});
         
         fetchOrders(); // Refresh orders list
       } catch (error: any) {
@@ -250,69 +327,101 @@ const AdminOrders: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên khách hàng *
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Tên khách hàng *
+               </label>
+               <input
+                 type="text"
+                 value={formData.customer_name}
+                 onChange={(e) => handleChange('customer_name', e.target.value)}
+                 onBlur={() => handleBlur('customer_name')}
+                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                  errors.customer_name
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-pink-500'
+                }`}
                 placeholder="Nhập tên khách hàng"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số điện thoại *
-              </label>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              {errors.customer_name && (
+                <p className="mt-1 text-sm text-red-600">{errors.customer_name}</p>
+              )}
+             </div>
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Số điện thoại *
+               </label>
+               <input
+                 type="tel"
+                 value={formData.customer_phone}
+                 onChange={(e) => handleChange('customer_phone', e.target.value)}
+                 onBlur={() => handleBlur('customer_phone')}
+                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                  errors.customer_phone
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-pink-500'
+                }`}
                 placeholder="Nhập số điện thoại"
               />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Địa chỉ
-              </label>
-              <input
-                type="text"
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              {errors.customer_phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.customer_phone}</p>
+              )}
+             </div>
+             <div className="md:col-span-2">
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Địa chỉ
+               </label>
+               <input
+                 type="text"
+                 value={formData.customer_address}
+                 onChange={(e) => handleChange('customer_address', e.target.value)}
+                 onBlur={() => handleBlur('customer_address')}
+                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                  errors.customer_address
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-pink-500'
+                }`}
                 placeholder="Nhập địa chỉ (tùy chọn)"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phương thức thanh toán
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'transfer')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="cash">Tiền mặt (Thanh toán ngay)</option>
-                <option value="transfer">Chuyển khoản</option>
-              </select>
+              {errors.customer_address && (
+                <p className="mt-1 text-sm text-red-600">{errors.customer_address}</p>
+              )}
+             </div>
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Phương thức thanh toán
+               </label>
+               <select
+                 value={formData.payment_method}
+                 onChange={(e) => handleChange('payment_method', e.target.value)}
+                 onBlur={() => handleBlur('payment_method')}
+                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                  errors.payment_method
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-pink-500'
+                }`}
+               >
+                 <option value="cash">Tiền mặt (Thanh toán ngay)</option>
+                 <option value="transfer">Chuyển khoản</option>
+               </select>
               
-              {/* Hiển thị thông tin bổ sung cho từng phương thức */}
-              <div className="mt-2 text-sm text-gray-600">
-                {paymentMethod === 'cash' && (
-                  <div className="p-2 bg-green-50 rounded border border-green-200">
-                    <p className="text-green-700">💳 <strong>Tiền mặt:</strong> Khách hàng thanh toán ngay tại cửa hàng</p>
-                  </div>
+                             {/* Hiển thị thông tin bổ sung cho từng phương thức */}
+               <div className="mt-2 text-sm text-gray-600">
+                 {formData.payment_method === 'cash' && (
+                   <div className="p-2 bg-green-50 rounded border border-green-200">
+                     <p className="text-green-700">💳 <strong>Tiền mặt:</strong> Khách hàng thanh toán ngay tại cửa hàng</p>
+                   </div>
+                 )}
+                 {formData.payment_method === 'transfer' && (
+                   <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                     <p className="text-blue-700">💳 <strong>Chuyển khoản:</strong> Thanh toán bằng chuyển khoản ngân hàng</p>
+                   </div>
+                 )}
+               </div>
+                               {errors.payment_method && (
+                  <p className="mt-1 text-sm text-red-600">{errors.payment_method}</p>
                 )}
-                {paymentMethod === 'transfer' && (
-                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                    <p className="text-blue-700">💳 <strong>Chuyển khoản:</strong> Thanh toán bằng chuyển khoản ngân hàng</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -337,32 +446,46 @@ const AdminOrders: React.FC = () => {
 
             {selectedProducts.map((item, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sản phẩm *</label>
-                  <select
-                    value={item.product_id || ''}
-                    onChange={(e) => updateProduct(index, 'product_id', parseInt(e.target.value) || null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="">Chọn sản phẩm</option>
-                    {products.map(product => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} - {product.price.toLocaleString('vi-VN')} ₫ (Còn: {product.stock})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity || ''}
-                    onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    placeholder="1"
-                  />
-                </div>
+                                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Sản phẩm *</label>
+                   <select
+                     value={item.product_id || ''}
+                     onChange={(e) => updateProduct(index, 'product_id', parseInt(e.target.value) || null)}
+                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                       errors.products && selectedProducts[index]?.product_id === null
+                         ? 'border-red-500 focus:ring-red-500'
+                         : 'border-gray-300 focus:ring-pink-500'
+                     }`}
+                   >
+                     <option value="">Chọn sản phẩm</option>
+                     {products.map(product => (
+                       <option key={product.id} value={product.id}>
+                         {product.name} - {product.price.toLocaleString('vi-VN')} ₫ (Còn: {product.stock})
+                       </option>
+                     ))}
+                   </select>
+                   {errors.products && selectedProducts[index]?.product_id === null && (
+                     <p className="mt-1 text-sm text-red-600">Vui lòng chọn sản phẩm</p>
+                   )}
+                 </div>
+                                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng *</label>
+                   <input
+                     type="number"
+                     min="1"
+                     value={item.quantity || ''}
+                     onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
+                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                       errors.products && (!item.quantity || item.quantity <= 0)
+                         ? 'border-red-500 focus:ring-red-500'
+                         : 'border-gray-300 focus:ring-pink-500'
+                     }`}
+                     placeholder="1"
+                   />
+                   {errors.products && (!item.quantity || item.quantity <= 0) && (
+                     <p className="mt-1 text-sm text-red-600">Số lượng phải ít nhất là 1</p>
+                   )}
+                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá (₫)</label>
                   <input
@@ -399,13 +522,13 @@ const AdminOrders: React.FC = () => {
             )}
           </div>
 
-          <div className="border-t pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold text-gray-800">Tổng tiền:</span>
-              <span className="text-2xl font-bold text-pink-600">
-                {(totalAmount || 0).toLocaleString('vi-VN')} ₫
-              </span>
-            </div>
+                     <div className="border-t pt-6">
+             <div className="flex items-center justify-between mb-4">
+               <span className="text-lg font-semibold text-gray-800">Tổng tiền:</span>
+               <span className="text-2xl font-bold text-pink-600">
+                 {(formData.total_amount || 0).toLocaleString('vi-VN')} ₫
+               </span>
+             </div>
             <div className="flex gap-4">
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -414,14 +537,14 @@ const AdminOrders: React.FC = () => {
               >
                 Hủy
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || totalAmount <= 0}
-                className="flex-1 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-              >
-                {loading ? 'Đang tạo...' : 'Tạo đơn hàng'}
-              </button>
+                             <button
+                 onClick={handleSubmit}
+                 disabled={loading || formData.total_amount <= 0}
+                 className="flex-1 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                 type="button"
+               >
+                 {loading ? 'Đang tạo...' : 'Tạo đơn hàng'}
+               </button>
             </div>
           </div>
         </div>

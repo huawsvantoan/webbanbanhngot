@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAppSelector } from '../../hooks/useAppSelector';
+import { RootState } from '../../store';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
 import { Icons } from '../../components/icons';
+import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
@@ -24,7 +25,8 @@ interface DashboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { isAdmin } = useAuth();
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  const isAdmin = user?.role === 'admin';
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

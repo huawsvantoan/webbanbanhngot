@@ -36,8 +36,9 @@ const AdminProducts: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/products?includeDeleted=true');
-      setProducts(response.data);
+      const response = await api.get('/products?includeDeleted=true&limit=1000');
+      // API bây giờ trả về { data: [...], total, totalPages, ... }
+      setProducts(response.data.data || response.data);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch products');

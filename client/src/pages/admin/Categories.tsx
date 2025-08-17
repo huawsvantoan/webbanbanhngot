@@ -35,6 +35,9 @@ const AdminCategories: React.FC = () => {
     description: '',
     image_url: ''
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     // The isAdmin check and navigation is now handled by AdminRoute
@@ -45,6 +48,7 @@ const AdminCategories: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/categories?includeDeleted=true');
+      console.log('Categories fetched:', response.data);
       setCategories(response.data);
       setError(null);
     } catch (err: any) {
@@ -58,20 +62,49 @@ const AdminCategories: React.FC = () => {
     e.preventDefault();
     
     try {
+      setUploading(true);
+      
+      let imageUrl = formData.image_url;
+      
+      // Upload image if selected
+      if (selectedImage) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('image', selectedImage);
+        
+        const uploadResponse = await api.post('/upload', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        imageUrl = uploadResponse.data.image_url;
+      }
+      
+      const categoryData = {
+        ...formData,
+        image_url: imageUrl
+      };
+      
+      console.log('Category data being sent:', categoryData);
+      
       if (editingCategory) {
-        await api.put(`/categories/${editingCategory.id}`, formData);
+        await api.put(`/categories/${editingCategory.id}`, categoryData);
         toast.success('Category updated successfully');
         setEditingCategory(null);
       } else {
-        await api.post('/categories', formData);
+        await api.post('/categories', categoryData);
         toast.success('Category created successfully');
       }
       
       setFormData({ name: '', description: '', image_url: '' });
+      setSelectedImage(null);
+      setImagePreview('');
       setShowForm(false);
       fetchCategories();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save category');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -82,6 +115,8 @@ const AdminCategories: React.FC = () => {
       description: category.description || '',
       image_url: category.image_url || ''
     });
+    setSelectedImage(null);
+    setImagePreview(category.image_url || '');
     setShowForm(true);
   };
 
@@ -133,6 +168,20 @@ const AdminCategories: React.FC = () => {
       setShowPermanentDeleteModal(false);
       setCategoryToPermanentDelete(null);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview('');
+    setFormData(prev => ({ ...prev, image_url: '' }));
   };
 
   const filteredCategories = categories.filter(category =>
@@ -202,15 +251,22 @@ const AdminCategories: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className={`bg-white rounded-lg shadow-md overflow-hidden ${category.isDeleted === 1 ? 'opacity-60' : ''}`}
             >
-              {category.image_url && (
-                <div className="h-48 bg-gray-200">
+              <div className="h-48 bg-gray-200">
+                {category.image_url ? (
                   <img
                     src={category.image_url}
                     alt={category.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/images/default-cake.jpg';
+                    }}
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Icons.Image className="text-gray-400" size={48} />
+                  </div>
+                )}
+              </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
                 {category.description && (
@@ -302,13 +358,32 @@ const AdminCategories: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block mb-1 font-medium">Ảnh (URL)</label>
+                  <label className="block mb-1 font-medium">Hình ảnh danh mục</label>
                   <input
-                    type="text"
-                    value={formData.image_url}
-                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                    className="w-full border px-3 py-2 rounded"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
                   />
+                  {(imagePreview || formData.image_url) && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-600 mb-2">Xem trước ảnh:</p>
+                      <div className="relative inline-block">
+                        <img 
+                          src={imagePreview || formData.image_url} 
+                          alt="Preview" 
+                          className="h-32 w-32 object-cover rounded-lg shadow-md" 
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 text-sm"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
                   <button
@@ -319,10 +394,18 @@ const AdminCategories: React.FC = () => {
                     Đóng
                   </button>
                   <button
-                    className="px-4 py-2 rounded bg-pink-600 text-white hover:bg-pink-700"
+                    className="px-4 py-2 rounded bg-pink-600 text-white hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     type="submit"
+                    disabled={uploading}
                   >
-                    {editingCategory ? 'Lưu thay đổi' : 'Thêm danh mục'}
+                    {uploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      editingCategory ? 'Lưu thay đổi' : 'Thêm danh mục'
+                    )}
                   </button>
                 </div>
               </form>

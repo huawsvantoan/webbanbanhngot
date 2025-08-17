@@ -48,6 +48,7 @@ const AdminBlogManagement: React.FC = () => {
 
   // Thêm state cho lỗi validate
   const [formErrors, setFormErrors] = useState<any>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Callback functions để tránh re-render
   const handleContentChange = useCallback((value: string) => {
@@ -244,18 +245,22 @@ const AdminBlogManagement: React.FC = () => {
       return;
     }
     
+    setUploadingImage(true);
     const formData = new FormData();
     formData.append('image', file);
-         try {
-       const res = await api.post('/upload', formData, {
-         headers: { 'Content-Type': 'multipart/form-data' },
-       });
-       setFormData(prev => ({ ...prev, image: res.data.imageUrl }));
-       toast.success('Tải ảnh lên thành công!');
-     } catch (err) {
-       console.error('Upload error:', err);
-       toast.error('Tải ảnh lên thất bại!');
-     }
+    
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setFormData(prev => ({ ...prev, image: res.data.image_url }));
+      toast.success('Tải ảnh lên thành công!');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Tải ảnh lên thất bại!');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   if (loading) {
@@ -505,17 +510,22 @@ const AdminBlogManagement: React.FC = () => {
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">Ảnh bài viết</label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        {formData.image ? (
+                        {uploadingImage ? (
+                          <div className="flex flex-col items-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-pink-500 border-t-transparent mb-4"></div>
+                            <p className="text-gray-600">Đang tải ảnh lên...</p>
+                          </div>
+                        ) : formData.image ? (
                           <div>
-                                                         <img
-                               src={formData.image ? (formData.image.startsWith('http') ? formData.image : `http://localhost:5000${formData.image}`) : '/images/default-cake.jpg'}
-                               alt="Preview"
-                               className="w-full max-w-xs h-48 object-cover rounded mb-4 mx-auto"
-                               onError={(e) => {
-                                 const target = e.target as HTMLImageElement;
-                                 target.src = '/images/default-cake.jpg';
-                               }}
-                             />
+                            <img
+                              src={formData.image ? (formData.image.startsWith('http') ? formData.image : `http://localhost:5000${formData.image}`) : '/images/default-cake.jpg'}
+                              alt="Preview"
+                              className="w-full max-w-xs h-48 object-cover rounded mb-4 mx-auto"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/images/default-cake.jpg';
+                              }}
+                            />
                             <button
                               onClick={() => setFormData({ ...formData, image: '' })}
                               className="text-red-500 hover:text-red-700 text-sm"
@@ -533,7 +543,8 @@ const AdminBlogManagement: React.FC = () => {
                           type="file"
                           accept="image/*"
                           onChange={handleImageUpload}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                          disabled={uploadingImage}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>

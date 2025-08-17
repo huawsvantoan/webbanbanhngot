@@ -9,6 +9,7 @@ import { Icons } from '../components/icons';
 import { toast } from 'react-hot-toast';
 import Reviews from '../components/Reviews';
 import { addToCart } from '../features/cart/cartSlice';
+import { CartIconRef } from '../components/Header';
 
 const DEFAULT_CAKE_IMAGE = '/images/default-cake.jpg';
 
@@ -62,6 +63,50 @@ const ProductDetail: React.FC = () => {
       navigate('/login');
       return;
     }
+
+    // Animation bay vào giỏ hàng
+    if (CartIconRef.current) {
+      // Tìm ảnh sản phẩm chính (ảnh lớn ở giữa)
+      const productImage = document.querySelector('.product-image .w-full.h-full.object-cover') as HTMLImageElement;
+      if (productImage) {
+        const imgRect = productImage.getBoundingClientRect();
+        const cartRect = CartIconRef.current.getBoundingClientRect();
+        
+        // Clone ảnh sản phẩm hiện tại
+        const flyingImg = productImage.cloneNode(true) as HTMLImageElement;
+        flyingImg.style.position = 'fixed';
+        flyingImg.style.left = imgRect.left + 'px';
+        flyingImg.style.top = imgRect.top + 'px';
+        flyingImg.style.width = imgRect.width + 'px';
+        flyingImg.style.height = imgRect.height + 'px';
+        flyingImg.style.transition = 'all 0.9s cubic-bezier(.4,2,.6,1)';
+        flyingImg.style.zIndex = '9999';
+        flyingImg.style.pointerEvents = 'none';
+        flyingImg.style.borderRadius = '8px';
+        flyingImg.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+        
+        // Đảm bảo ảnh bay có đúng src của sản phẩm hiện tại
+        flyingImg.src = productImages[selectedImage];
+        
+        document.body.appendChild(flyingImg);
+        
+        setTimeout(() => {
+          const cartCenterX = cartRect.left + cartRect.width / 2;
+          const cartCenterY = cartRect.top + cartRect.height / 2;
+          flyingImg.style.left = cartCenterX - imgRect.width / 8 + 'px';
+          flyingImg.style.top = cartCenterY - imgRect.height / 8 + 'px';
+          flyingImg.style.width = imgRect.width / 4 + 'px';
+          flyingImg.style.height = imgRect.height / 4 + 'px';
+          flyingImg.style.opacity = '0.7';
+          flyingImg.style.transform = 'rotate(360deg)';
+        }, 10);
+        
+        setTimeout(() => {
+          flyingImg.remove();
+        }, 950);
+      }
+    }
+
     setIsAddingToCart(true);
     try {
       await dispatch(addToCart({ productId: product.id, quantity })).unwrap();
@@ -146,7 +191,7 @@ const ProductDetail: React.FC = () => {
           <div className="lg:flex">
             {/* Product Gallery */}
             <div className="lg:w-1/2 p-6 lg:p-8">
-              <div className="relative aspect-square mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+              <div className="relative aspect-square mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 product-image">
                 <motion.img
                   key={selectedImage}
                   initial={{ opacity: 0, scale: 1.1 }}
@@ -278,7 +323,7 @@ const ProductDetail: React.FC = () => {
                 <button
                   onClick={handleAddToCart}
                   disabled={product.stock === 0 || isAddingToCart}
-                  className={`flex-1 flex items-center justify-center gap-3 py-4 px-6 rounded-xl text-white font-semibold transition-all duration-300 ${
+                  className={`flex-1 h-14 flex items-center justify-center gap-3 px-6 rounded-xl text-white font-semibold transition-all duration-300 ${
                     product.stock === 0 || isAddingToCart
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
@@ -294,7 +339,7 @@ const ProductDetail: React.FC = () => {
                 
                 <button
                   onClick={handleShare}
-                  className="flex-shrink-0 p-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-pink-300 transition-all duration-300"
+                  className="flex-shrink-0 h-14 w-14 rounded-xl border-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-pink-300 transition-all duration-300 flex items-center justify-center"
                   title="Chia sẻ sản phẩm"
                 >
                   <Icons.Share2 className="w-5 h-5" />

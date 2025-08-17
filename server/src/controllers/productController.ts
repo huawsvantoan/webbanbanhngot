@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Product, IProduct } from '../models/Product';
 import multer from 'multer';
+import { pool } from '../config/database';
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -27,9 +28,39 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
     const featured = req.query.featured !== undefined ? req.query.featured === 'true' : undefined;
     const hot = req.query.hot !== undefined ? req.query.hot === 'true' : undefined;
-    const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 12;
+    const offset = (page - 1) * limit;
     
+    // Get total count first
+    let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
+    const countParams: any[] = [];
+    
+    if (!includeDeleted) {
+      countQuery += ' AND isDeleted = 0';
+    }
+    if (search) {
+      countQuery += ' AND (name LIKE ? OR description LIKE ?)';
+      countParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (categoryId) {
+      countQuery += ' AND category_id = ?';
+      countParams.push(categoryId);
+    }
+    if (featured !== undefined) {
+      countQuery += ' AND is_featured = ?';
+      countParams.push(featured);
+    }
+    if (hot !== undefined) {
+      countQuery += ' AND is_hot = ?';
+      countParams.push(hot);
+    }
+    
+         const [countResult] = await pool.query(countQuery, countParams) as [{ total: number }[], any];
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get products with pagination
     const products = await Product.findAll({ 
       includeDeleted, 
       search, 
@@ -39,7 +70,14 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
       limit, 
       offset 
     });
-    res.status(200).json(products);
+    
+    res.status(200).json({
+      data: products,
+      total,
+      totalPages,
+      currentPage: page,
+      limit
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products' });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '../icons';
-import { Link } from 'react-router-dom';
+ 
 import { getPublicBanners, Banner as BannerType } from '../../services/bannerService';
 
 interface BannerProps {
@@ -12,7 +12,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
   const [banners, setBanners] = useState<BannerType[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Fetch banners from API
@@ -74,7 +74,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
 
   if (loading) {
     return (
-      <div className="relative h-96 bg-gray-200 animate-pulse">
+      <div className="relative h-[500px] md:h-[600px] lg:h-[700px] bg-gray-200 animate-pulse rounded-2xl">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
         </div>
@@ -88,7 +88,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
   }
 
   return (
-    <div className="relative h-96 md:h-[500px] overflow-hidden bg-gray-100 rounded-2xl shadow-xl">
+    <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden bg-gray-100 rounded-2xl shadow-xl">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
@@ -104,6 +104,9 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
                backgroundImage: imageError 
                  ? 'url(/images/default-cake.jpg)' 
                  : `url(${banners[currentSlide].image_url})`,
+               backgroundSize: 'cover',
+               backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat'
              }}
            >
                          {/* Overlay gradient mạnh hơn cho chữ nổi bật trên ảnh thật */}
@@ -127,7 +130,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight drop-shadow-2xl"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 leading-tight drop-shadow-2xl"
                   style={{ textShadow: '0 6px 32px rgba(0,0,0,0.7)' }}
                 >
                   {banners[currentSlide].title}
@@ -137,7 +140,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="text-lg md:text-2xl text-gray-100 drop-shadow-xl"
+                    className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 drop-shadow-xl leading-relaxed"
                   >
                     {banners[currentSlide].description}
                   </motion.p>

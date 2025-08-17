@@ -30,6 +30,7 @@ export const getDeletedBanners = asyncHandler(async (req: Request, res: Response
 // @route   POST /api/admin/banners
 // @access  Admin
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
+  console.log('Create banner request body:', req.body); // Debug log
   const { title, description, image_url, link_url, is_active } = req.body;
   let { position } = req.body;
 
@@ -52,13 +53,15 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
     }
     // Chấp nhận URL tuyệt đối
     else if (image_url.startsWith('http://') || image_url.startsWith('https://')) {
-      if (!/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|avif)$/i.test(image_url)) {
-        return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (định dạng file không được hỗ trợ)' });
-      }
+      // Bớt strict validation cho URL
     }
     // Chấp nhận blob URL (cho preview)
     else if (image_url.startsWith('blob:')) {
       // Không cần validate blob URL
+    }
+    // Chấp nhận đường dẫn upload từ server
+    else if (image_url.includes('uploads/')) {
+      // Đường dẫn từ upload server
     }
     else {
       return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ' });

@@ -10,7 +10,6 @@ import { Icons } from '../components/icons';
 import Banner from '../components/Banner';
 import { CartIconRef } from '../components/Header';
 import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Category } from '../types/category';
 
@@ -37,7 +36,7 @@ const Home: React.FC = () => {
   const dispatch = useAppDispatch();
   const { products, loading } = useAppSelector((state: RootState) => state.products);
   const imgRefs = React.useRef<(HTMLImageElement | null)[]>([]);
-  const { user } = useAuth();
+  const { user } = useAppSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
   
   // State cho blog posts
@@ -123,8 +122,20 @@ const Home: React.FC = () => {
   const fetchBlogPosts = async () => {
     try {
       setBlogLoading(true);
-      const response = await api.get('/blog/public');
-      setBlogPosts(response.data || []);
+      const response = await api.get('/blog/public?page=1&limit=3');
+      
+      // Hỗ trợ cả format mới (có phân trang) và format cũ
+      if (response.data && Array.isArray(response.data.data)) {
+        // Format mới: có data, total, totalPages
+        setBlogPosts(response.data.data || []);
+      } else if (Array.isArray(response.data)) {
+        // Format cũ: array trực tiếp
+        setBlogPosts(response.data || []);
+      } else {
+        // Fallback to empty array
+        setBlogPosts([]);
+      }
+      
       setBlogError(null);
     } catch (err: any) {
       console.error('Error fetching blog posts:', err);
@@ -514,21 +525,23 @@ const Home: React.FC = () => {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full p-4 hover:from-pink-600 hover:to-purple-600 transition-all duration-300 shadow-lg"
-                        onClick={() => handleAddToCart(product.id, imgRefs.current[index])}
-                      >
-                        <Icons.ShoppingCart size={20} />
+                          className="bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center hover:from-pink-600 hover:to-purple-600 transition-all duration-300 shadow-lg flex-shrink-0 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px]"
+                          onClick={() => handleAddToCart(product.id, imgRefs.current[index])}
+                          style={{ width: '48px', height: '48px' }}
+                        >
+                          <Icons.ShoppingCart size={20} />
                         </motion.button>
                         <Link to={`/products/${product.id}`}>
                           <motion.div
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className="bg-white text-gray-800 rounded-full p-4 hover:bg-gray-100 transition-all duration-300 shadow-lg"
+                            className="bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition-all duration-300 shadow-lg flex-shrink-0 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px]"
+                            style={{ width: '48px', height: '48px' }}
                           >
-                        <Icons.ArrowRight size={20} />
+                            <Icons.ArrowRight size={20} />
                           </motion.div>
-                      </Link>
-                    </div>
+                        </Link>
+                      </div>
                   </div>
                     
                     <div className="p-8 text-center relative">
@@ -905,20 +918,9 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="text-center mb-20"
+            className="text-center mb-8"
           >
-            <motion.div
-              initial={{ scale: 0.8 }}
-              whileInView={{ scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="inline-block mb-6"
-            >
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-                <Icons.Package className="text-white" size={36} />
-              </div>
-            </motion.div>
-            <h2 className="text-5xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
+            <h2 className="text-5xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
               Bài Viết Mới Nhất
             </h2>
             <p className="text-gray-600 text-xl max-w-3xl mx-auto leading-relaxed">
