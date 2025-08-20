@@ -22,8 +22,7 @@ export interface Order {
   created_at: string;
   updated_at: string;
   items: OrderItem[];
-  payment_method?: string;
-  payment_proof?: string | null;
+  payment_method?: 'cod' | 'vnpay';
 }
 
 export interface CreateOrderData {

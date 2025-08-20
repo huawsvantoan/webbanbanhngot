@@ -17,5 +17,6 @@ router.delete('/users/:id', protect, authorize(['admin']), asyncHandler(authCont
 router.post('/forgot-password', asyncHandler(authController.forgotPassword));
 router.post('/reset-password', asyncHandler(authController.resetPassword));
 router.post('/verify-reset-code', asyncHandler(authController.verifyResetCode));
+router.get('/verify-email', asyncHandler(authController.verifyEmail));
 
 export default router; 

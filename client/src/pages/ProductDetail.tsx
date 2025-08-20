@@ -9,8 +9,9 @@ import { Icons } from '../components/icons';
 import { toast } from 'react-hot-toast';
 import Reviews from '../components/Reviews';
 import { addToCart } from '../features/cart/cartSlice';
+import { CartIconRef } from '../components/Header';
 
-const DEFAULT_CAKE_IMAGE = '/images/default-cake.png';
+const DEFAULT_CAKE_IMAGE = '/images/default-cake.jpg';
 
 const getImageUrl = (img?: string | null) => {
   if (!img) return DEFAULT_CAKE_IMAGE;
@@ -29,17 +30,16 @@ const ProductDetail: React.FC = () => {
 
   // Local state
   const [quantity, setQuantity] = useState(1);
-  const [isWishlist, setIsWishlist] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  // Mock images for gallery (replace with actual product images)
+  // Product images - chỉ hiển thị ảnh chính nếu không có ảnh phụ
   const productImages = [
     getImageUrl(product?.image_url),
-    '/images/product-detail-1.jpg',
-    '/images/product-detail-2.jpg',
-    '/images/product-detail-3.jpg',
   ];
+  
+  // Chỉ hiển thị gallery nếu có nhiều hơn 1 ảnh
+  const hasMultipleImages = productImages.length > 1;
 
   useEffect(() => {
     if (id) {
@@ -63,6 +63,50 @@ const ProductDetail: React.FC = () => {
       navigate('/login');
       return;
     }
+
+    // Animation bay vào giỏ hàng
+    if (CartIconRef.current) {
+      // Tìm ảnh sản phẩm chính (ảnh lớn ở giữa)
+      const productImage = document.querySelector('.product-image .w-full.h-full.object-cover') as HTMLImageElement;
+      if (productImage) {
+        const imgRect = productImage.getBoundingClientRect();
+        const cartRect = CartIconRef.current.getBoundingClientRect();
+        
+        // Clone ảnh sản phẩm hiện tại
+        const flyingImg = productImage.cloneNode(true) as HTMLImageElement;
+        flyingImg.style.position = 'fixed';
+        flyingImg.style.left = imgRect.left + 'px';
+        flyingImg.style.top = imgRect.top + 'px';
+        flyingImg.style.width = imgRect.width + 'px';
+        flyingImg.style.height = imgRect.height + 'px';
+        flyingImg.style.transition = 'all 0.9s cubic-bezier(.4,2,.6,1)';
+        flyingImg.style.zIndex = '9999';
+        flyingImg.style.pointerEvents = 'none';
+        flyingImg.style.borderRadius = '8px';
+        flyingImg.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+        
+        // Đảm bảo ảnh bay có đúng src của sản phẩm hiện tại
+        flyingImg.src = productImages[selectedImage];
+        
+        document.body.appendChild(flyingImg);
+        
+        setTimeout(() => {
+          const cartCenterX = cartRect.left + cartRect.width / 2;
+          const cartCenterY = cartRect.top + cartRect.height / 2;
+          flyingImg.style.left = cartCenterX - imgRect.width / 8 + 'px';
+          flyingImg.style.top = cartCenterY - imgRect.height / 8 + 'px';
+          flyingImg.style.width = imgRect.width / 4 + 'px';
+          flyingImg.style.height = imgRect.height / 4 + 'px';
+          flyingImg.style.opacity = '0.7';
+          flyingImg.style.transform = 'rotate(360deg)';
+        }, 10);
+        
+        setTimeout(() => {
+          flyingImg.remove();
+        }, 950);
+      }
+    }
+
     setIsAddingToCart(true);
     try {
       await dispatch(addToCart({ productId: product.id, quantity })).unwrap();
@@ -74,10 +118,7 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const handleWishlistToggle = () => {
-    setIsWishlist(!isWishlist);
-    toast.success(isWishlist ? 'Removed from wishlist' : 'Added to wishlist');
-  };
+  // Removed wishlist functionality as it's not needed
 
   const handleShare = async () => {
     try {
@@ -89,7 +130,7 @@ const ProductDetail: React.FC = () => {
     } catch (error) {
       // Fallback for browsers that don't support Web Share API
       navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copied to clipboard!');
+      toast.success('Đã sao chép link vào clipboard!');
     }
   };
 
@@ -105,7 +146,7 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error: </strong>
+          <strong className="font-bold">Lỗi: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
       </div>
@@ -116,14 +157,14 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
-          <p className="text-gray-600 mb-8">The product you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Không tìm thấy sản phẩm</h2>
+          <p className="text-gray-600 mb-8">Sản phẩm bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
           <button
             onClick={() => navigate('/products')}
             className="inline-flex items-center gap-2 bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition-colors"
           >
             <Icons.ChevronLeft />
-            Back to Products
+            Quay lại Sản phẩm
           </button>
         </div>
       </div>
@@ -131,181 +172,214 @@ const ProductDetail: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center text-sm text-gray-500 mb-8">
-        <button
-          onClick={() => navigate('/products')}
-          className="hover:text-pink-600 transition-colors"
-        >
-          Products
-        </button>
-        <Icons.ChevronRight className="mx-2" />
-        <span className="text-gray-900">{product.name}</span>
-      </nav>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-pink-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <nav className="flex items-center text-sm text-gray-500 mb-8">
+          <button
+            onClick={() => navigate('/products')}
+            className="hover:text-pink-600 transition-colors flex items-center gap-1"
+          >
+            <Icons.ChevronLeft className="w-4 h-4" />
+            Sản phẩm
+          </button>
+          <Icons.ChevronRight className="mx-2" />
+          <span className="text-gray-900 font-medium">{product.name}</span>
+        </nav>
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="md:flex">
-          {/* Product Gallery */}
-          <div className="md:w-1/2 p-6">
-            <div className="relative aspect-square mb-4">
-              <motion.img
-                key={selectedImage}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                src={productImages[selectedImage]}
-                alt={product.name}
-                className="w-full h-full object-cover rounded-lg"
-              />
-              <button
-                onClick={() => setSelectedImage(prev => (prev > 0 ? prev - 1 : productImages.length - 1))}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white transition-colors"
-              >
-                <Icons.ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => setSelectedImage(prev => (prev < productImages.length - 1 ? prev + 1 : 0))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white transition-colors"
-              >
-                <Icons.ChevronRight className="w-6 h-6" />
-              </button>
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="lg:flex">
+            {/* Product Gallery */}
+            <div className="lg:w-1/2 p-6 lg:p-8">
+              <div className="relative aspect-square mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 product-image">
+                <motion.img
+                  key={selectedImage}
+                  initial={{ opacity: 0, scale: 1.1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.4 }}
+                  src={productImages[selectedImage]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                
+                                 {/* Navigation Arrows - chỉ hiện khi có nhiều ảnh */}
+                 {hasMultipleImages && (
+                   <>
+                     <button
+                       onClick={() => setSelectedImage(prev => (prev > 0 ? prev - 1 : productImages.length - 1))}
+                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl"
+                     >
+                       <Icons.ChevronLeft className="w-5 h-5 text-gray-700" />
+                     </button>
+                     <button
+                       onClick={() => setSelectedImage(prev => (prev < productImages.length - 1 ? prev + 1 : 0))}
+                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl"
+                     >
+                       <Icons.ChevronRight className="w-5 h-5 text-gray-700" />
+                     </button>
+                   </>
+                 )}
+
+                {/* Stock Status Overlay */}
+                {product.stock === 0 && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                    <div className="text-center">
+                      <Icons.XCircle className="text-white mx-auto mb-2" size={48} />
+                      <span className="text-white font-bold text-xl">Hết Hàng</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+                             {/* Thumbnail Gallery - chỉ hiện khi có nhiều ảnh */}
+               {hasMultipleImages && (
+                 <div className="grid grid-cols-4 gap-3">
+                   {productImages.map((image, index) => (
+                     <button
+                       key={index}
+                       onClick={() => setSelectedImage(index)}
+                       className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-105 ${
+                         selectedImage === index 
+                           ? 'border-pink-500 shadow-lg' 
+                           : 'border-gray-200 hover:border-pink-300'
+                       }`}
+                     >
+                       <img
+                         src={image}
+                         alt={`${product.name} - Ảnh ${index + 1}`}
+                         className="w-full h-full object-cover"
+                       />
+                     </button>
+                   ))}
+                 </div>
+               )}
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {productImages.map((image, index) => (
+
+            {/* Product Info */}
+            <div className="lg:w-1/2 p-6 lg:p-8">
+              <div className="mb-8">
+                {/* Product Name */}
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight">
+                  {product.name}
+                </h1>
+                
+                {/* Price Section */}
+                <div className="flex items-center gap-4 mb-6">
+                  <span className="text-3xl font-bold text-pink-600">
+                    {product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                  </span>
+                  {product.original_price && product.original_price > product.price && (
+                    <span className="text-lg text-gray-500 line-through">
+                      {product.original_price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Description */}
+                <p className="text-gray-700 text-lg mb-6 leading-relaxed">
+                  {product.description || 'Chưa có mô tả cho sản phẩm này.'}
+                </p>
+              </div>
+
+              {/* Quantity Selector */}
+              <div className="mb-8">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Số lượng
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden hover:border-pink-300 transition-colors">
+                    <button
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      disabled={quantity <= 1}
+                      className="p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Icons.Minus className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={product.stock}
+                      value={quantity}
+                      onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
+                      className="w-20 text-center border-x border-gray-200 py-3 focus:outline-none focus:ring-0 text-lg font-semibold"
+                    />
+                    <button
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      disabled={quantity >= product.stock}
+                      className="p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Icons.Plus className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    Còn {product.stock} sản phẩm
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === index ? 'border-pink-600' : 'border-transparent'
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0 || isAddingToCart}
+                  className={`flex-1 h-14 flex items-center justify-center gap-3 px-6 rounded-xl text-white font-semibold transition-all duration-300 ${
+                    product.stock === 0 || isAddingToCart
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
                   }`}
                 >
-                  <img
-                    src={image}
-                    alt={`${product.name} - View ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                  {isAddingToCart ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                  ) : (
+                    <Icons.ShoppingCart className="w-5 h-5" />
+                  )}
+                  {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Product Info */}
-          <div className="md:w-1/2 p-6 md:p-8">
-            <div className="mb-8">
-              <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
-                {product.name}
-              </h1>
-              <div className="flex items-center gap-4 mb-6">
-                <span className="text-3xl font-bold text-pink-600">
-                  ${product.price.toFixed(2)}
-                </span>
-                {product.stock > 0 ? (
-                  <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
-                    In Stock ({product.stock} available)
-                  </span>
-                ) : (
-                  <span className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded">
-                    Out of Stock
-                  </span>
-                )}
+                
+                <button
+                  onClick={handleShare}
+                  className="flex-shrink-0 h-14 w-14 rounded-xl border-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-pink-300 transition-all duration-300 flex items-center justify-center"
+                  title="Chia sẻ sản phẩm"
+                >
+                  <Icons.Share2 className="w-5 h-5" />
+                </button>
               </div>
-              <p className="text-gray-700 text-lg mb-6">
-                {product.description || 'No description available.'}
-              </p>
-            </div>
 
-            {/* Quantity Selector */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity
-              </label>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border border-gray-300 rounded-md">
-                  <button
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                    disabled={quantity <= 1}
-                    className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icons.Minus className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    max={product.stock}
-                    value={quantity}
-                    onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
-                    className="w-16 text-center border-x border-gray-300 py-2 focus:outline-none"
-                  />
-                  <button
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                    disabled={quantity >= product.stock}
-                    className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icons.Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="text-sm text-gray-500">
-                  {product.stock} items available
-                </span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock === 0 || isAddingToCart}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-md text-white font-semibold transition-colors ${
-                  product.stock === 0 || isAddingToCart
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-pink-600 hover:bg-pink-700'
-                }`}
-              >
-                {isAddingToCart ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                ) : (
-                  <Icons.ShoppingCart className="w-5 h-5" />
-                )}
-                {isAddingToCart ? 'Adding...' : 'Add to Cart'}
-              </button>
-              <button
-                onClick={handleWishlistToggle}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-md font-semibold transition-colors border ${
-                  isWishlist
-                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <Icons.Heart className="w-5 h-5" fill={isWishlist ? 'currentColor' : 'none'} />
-                {isWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              </button>
-              <button
-                onClick={handleShare}
-                className="flex-shrink-0 p-3 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Icons.Share2 className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Product Meta */}
-            <div className="border-t border-gray-200 pt-6 mt-6 text-sm text-gray-600 space-y-2">
-              <p>SKU: CAKE-12345</p>
-              <p>Category: <Link to={`/products?category=${product.category_name}`} className="text-pink-600 hover:underline">{product.category_name || 'N/A'}</Link></p>
-              <p>Tags: Cake, Sweet, Dessert</p>
+                             {/* Product Meta */}
+               <div className="border-t border-gray-200 pt-6 mt-6">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+                   <div>
+                     <span className="font-semibold text-gray-700">Mã sản phẩm:</span>
+                     <p className="mt-1">CAKE-{product.id.toString().padStart(5, '0')}</p>
+                   </div>
+                   {product.category_name && (
+                     <div>
+                       <span className="font-semibold text-gray-700">Danh mục:</span>
+                       <p className="mt-1">
+                         <Link 
+                           to={`/products?category=${product.category_name}`} 
+                           className="text-pink-600 hover:underline hover:text-pink-700 transition-colors"
+                         >
+                           {product.category_name}
+                         </Link>
+                       </p>
+                     </div>
+                   )}
+                 </div>
+               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Reviews Section */}
-      <div className="mt-12">
-        <Reviews 
-          productId={product.id} 
-          currentUserId={user?.id}
-          isAdmin={user?.role === 'admin'}
-        />
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <Reviews 
+            productId={product.id} 
+            currentUserId={user?.id}
+            isAdmin={user?.role === 'admin'}
+          />
+        </div>
       </div>
     </div>
   );

@@ -90,10 +90,19 @@ const AdminReviews: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'approved': return 'bg-green-100 text-green-800 border border-green-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      default: return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'approved': return 'Đã duyệt';
+      case 'rejected': return 'Đã từ chối';
+      case 'pending': return 'Chờ duyệt';
+      default: return 'Không xác định';
     }
   };
 
@@ -173,9 +182,13 @@ const AdminReviews: React.FC = () => {
                 {/* Product Image */}
                 <div className="flex-shrink-0">
                   <img
-                    src={review.product_image || '/images/default-cake.jpg'}
+                    src={review.product_image ? `${process.env.REACT_APP_API_URL || ''}${review.product_image}` : '/images/default-cake.jpg'}
                     alt={review.product_name}
                     className="w-20 h-20 object-cover rounded-lg"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/images/default-cake.jpg';
+                    }}
                   />
                 </div>
 
@@ -184,8 +197,8 @@ const AdminReviews: React.FC = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-4">
                       <h3 className="text-lg font-semibold text-gray-900">{review.product_name}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(review.status)}`}> 
-                        {review.status === 'pending' ? 'Chờ duyệt' : review.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(review.status)}`}> 
+                        {getStatusText(review.status)}
                       </span>
                     </div>
                     <span className="text-sm text-gray-500">
@@ -195,18 +208,29 @@ const AdminReviews: React.FC = () => {
 
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Icons.Star
-                          key={i}
-                          className={i < (review.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}
-                          size={16}
-                        />
-                      ))}
+                      {review.rating ? (
+                        <>
+                          {[...Array(5)].map((_, i) => (
+                            <Icons.Star
+                              key={i}
+                              className={i < (review.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}
+                              size={16}
+                            />
+                          ))}
+                          <span className="text-sm text-gray-600 ml-1">({review.rating}/5)</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500 italic">Không có đánh giá sao</span>
+                      )}
                     </div>
                     <span className="text-sm text-gray-600">bởi {review.user_name}</span>
                   </div>
 
-                  <p className="text-gray-700 mb-4 leading-relaxed">{review.content}</p>
+                  {review.content ? (
+                    <p className="text-gray-700 mb-4 leading-relaxed">{review.content}</p>
+                  ) : (
+                    <p className="text-gray-500 italic mb-4">Không có nội dung bình luận</p>
+                  )}
 
                   {/* Actions */}
                   <div className="flex items-center gap-3">
@@ -214,23 +238,32 @@ const AdminReviews: React.FC = () => {
                       <>
                         <button
                           onClick={() => handleStatusChange(review.id, 'approved')}
-                          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
                         >
                           <Icons.CheckCircle size={16} />
                           Duyệt
                         </button>
                         <button
                           onClick={() => handleStatusChange(review.id, 'rejected')}
-                          className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                          className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
                         >
                           <Icons.X size={16} />
                           Từ chối
                         </button>
                       </>
                     )}
+                    {review.status === 'rejected' && (
+                      <button
+                        onClick={() => handleStatusChange(review.id, 'approved')}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        <Icons.CheckCircle size={16} />
+                        Duyệt lại
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteClick(review)}
-                      className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors"
+                      className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors font-medium"
                     >
                       <Icons.Trash2 size={16} />
                       Xóa

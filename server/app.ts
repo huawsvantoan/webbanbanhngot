@@ -12,6 +12,7 @@ import dashboardRoutes from './src/routes/dashboard';
 import analyticsRoutes from './src/routes/analytics';
 import adminOrderRoutes from './src/routes/adminOrders';
 import adminReviewsRoutes from './src/routes/adminReviews';
+import uploadRoutes from './src/routes/upload';
 
 
 const app = express();
@@ -20,6 +21,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve static files
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use('/api/cart', cartRoutes);
 app.use('/api', reviewRoutes);
@@ -27,12 +31,13 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/admin', bannerRoutes);
+app.use('/api', bannerRoutes); // Mount banner routes at /api for both public and admin
 app.use('/api/admin', blogRoutes);
 app.use('/api/admin', dashboardRoutes);
 app.use('/api/admin', analyticsRoutes);
 app.use('/api/admin', adminOrderRoutes);
 app.use('/api/admin', adminReviewsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

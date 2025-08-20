@@ -1,253 +1,276 @@
-# Hệ Thống Bán Hàng Trực Tuyến - Bakery Store
+# 🍰 Website Bánh Ngọt - Sweet Cake Shop
 
-## Mô tả
-Hệ thống bán hàng trực tuyến cho tiệm bánh với đầy đủ tính năng quản lý sản phẩm, đơn hàng, người dùng và đánh giá.
+Website bán bánh ngọt handmade với đầy đủ chức năng quản lý, giỏ hàng, thanh toán và blog.
 
-## Tính năng chính
+## ✨ Tính năng chính
 
-### Cho Khách hàng chưa đăng nhập (Guest):
-- ✅ Xem danh sách sản phẩm
-- ✅ Xem chi tiết sản phẩm
-- ✅ Tìm kiếm sản phẩm
-- ✅ Xem banner/slider
-- ✅ Xem đánh giá sản phẩm
-- ✅ Đăng ký tài khoản
-- ✅ Đăng nhập
+### 🛍️ **Frontend (Client)**
+- **Trang chủ**: Banner, sản phẩm nổi bật, danh mục, blog posts
+- **Sản phẩm**: Danh sách, tìm kiếm, lọc theo danh mục, phân trang
+- **Giỏ hàng**: Thêm/sửa/xóa sản phẩm, tính tổng tiền
+- **Thanh toán**: VNPay, chuyển khoản, tiền mặt
+- **Blog**: Bài viết, phân trang, tìm kiếm
+- **Liên hệ**: Form liên hệ với validation
+- **Đăng nhập/Đăng ký**: Xác thực JWT
 
-### Cho Khách hàng đã đăng nhập (Customer):
-- ✅ Cập nhật thông tin cá nhân
-- ✅ Đổi mật khẩu
-- ✅ Đăng xuất
-- ✅ Thêm sản phẩm vào giỏ hàng
-- ✅ Cập nhật số lượng giỏ hàng
-- ✅ Xóa sản phẩm khỏi giỏ hàng
-- ✅ Xem giỏ hàng
-- ✅ Đặt hàng
-- ✅ Xem lịch sử đơn hàng
-- ✅ Hủy đơn hàng (nếu chưa thanh toán)
-- ✅ Đánh giá sản phẩm
-- ✅ Bình luận về sản phẩm
-- ✅ Chỉnh sửa đánh giá/bình luận
-- ✅ Xóa đánh giá/bình luận
+### 🔧 **Backend (Server)**
+- **API RESTful**: Express.js + TypeScript
+- **Database**: MySQL với connection pool
+- **Authentication**: JWT + bcrypt
+- **File Upload**: Multer với validation
+- **Payment**: Tích hợp VNPay
+- **Email**: Nodemailer cho thông báo
 
-### Cho Quản trị viên (Admin):
-- ✅ Thêm sản phẩm mới
-- ✅ Cập nhật thông tin sản phẩm
-- ✅ Xóa sản phẩm
-- ✅ Quản lý danh mục sản phẩm
-- ✅ Xem danh sách đơn hàng
-- ✅ Cập nhật trạng thái đơn hàng
-- ✅ Xem chi tiết đơn hàng
-- ✅ Hủy đơn hàng
-- ✅ Xem danh sách khách hàng
-- ✅ Khóa/Mở khóa tài khoản
-- ✅ Xem thông tin chi tiết khách hàng
-- ✅ Quản lý banner/slider
-- ✅ Quản lý đánh giá/bình luận
+### 👨‍💼 **Admin Panel**
+- **Dashboard**: Thống kê tổng quan
+- **Quản lý sản phẩm**: CRUD, upload ảnh, quản lý kho
+- **Quản lý đơn hàng**: Xem, cập nhật trạng thái, thêm mới
+- **Quản lý danh mục**: CRUD, upload ảnh
+- **Quản lý banner**: CRUD, upload ảnh
+- **Quản lý blog**: CRUD, rich text editor
+- **Quản lý người dùng**: Xem danh sách, phân quyền
+- **Quản lý đánh giá**: Duyệt, xóa đánh giá
 
-## Công nghệ sử dụng
+## 🚀 Cài đặt và chạy dự án
 
-### Backend:
-- Node.js + Express.js
-- TypeScript
-- MySQL
-- JWT Authentication
-- bcrypt (mã hóa mật khẩu)
+### **Yêu cầu hệ thống**
+- Node.js >= 16.0.0
+- MySQL >= 8.0
+- Git
 
-### Frontend:
-- React.js + TypeScript
-- Redux Toolkit (State Management)
-- Tailwind CSS (Styling)
-- Framer Motion (Animations)
-- React Router (Routing)
-- React Hot Toast (Notifications)
-
-## Cài đặt và chạy
-
-### 1. Clone repository
+### **Bước 1: Clone dự án**
 ```bash
-git clone <repository-url>
+git clone <your-repository-url>
 cd webbanhngot
 ```
 
-### 2. Cài đặt dependencies
+### **Bước 2: Cài đặt dependencies**
+
+#### **Client (Frontend)**
 ```bash
-# Backend
+cd client
+npm install
+```
+
+#### **Server (Backend)**
+```bash
 cd server
 npm install
-
-# Frontend
-cd ../client
-npm install
 ```
 
-### 3. Cấu hình database
-- Tạo database MySQL
-- Import file `database.sql` để tạo bảng và dữ liệu mẫu
-- Cập nhật thông tin kết nối database trong `server/src/config/database.ts`
+### **Bước 3: Cấu hình Database**
 
-### 4. Cấu hình environment variables
-Tạo file `.env` trong thư mục `server`:
-```env
-DB_HOST=localhost
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_NAME=your_database_name
-JWT_SECRET=your_jwt_secret_key
-PORT=5000
+#### **Tạo database MySQL**
+```sql
+CREATE DATABASE webbanhngot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 5. Chạy ứng dụng
+#### **Import dữ liệu**
 ```bash
-# Backend (từ thư mục server)
-npm run dev
-
-# Frontend (từ thư mục client)
-npm start
+# Copy file SQL từ thư mục gốc vào MySQL
+mysql -u root -p webbanhngot < "webbanhngot (4).sql"
 ```
 
-## Cấu trúc thư mục (Đã dọn dẹp)
+#### **Cấu hình kết nối database**
+```bash
+cd server
+# Tạo file .env từ .env.example (nếu có)
+# Hoặc cập nhật trực tiếp trong src/config/database.ts
+```
+
+### **Bước 4: Cấu hình môi trường**
+
+#### **Server (.env)**
+```env
+# Database
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=webbanhngot
+DB_PORT=3306
+
+# JWT Secret
+JWT_SECRET=your_jwt_secret_key
+
+# Server Port
+PORT=5000
+
+# VNPay Configuration
+VNPAY_TMN_CODE=your_vnpay_tmn_code
+VNPAY_HASH_SECRET=your_vnpay_hash_secret
+VNPAY_URL=your_vnpay_url
+
+# Email Configuration (nếu sử dụng)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+```
+
+### **Bước 5: Chạy dự án**
+
+#### **Chạy Server (Backend)**
+```bash
+cd server
+npm run dev
+# Server sẽ chạy tại http://localhost:5000
+```
+
+#### **Chạy Client (Frontend)**
+```bash
+cd client
+npm start
+# Client sẽ chạy tại http://localhost:3000
+```
+
+## 📁 Cấu trúc thư mục
 
 ```
 webbanhngot/
 ├── client/                 # Frontend React
+│   ├── public/            # Static files
+│   │   ├── images/        # Default images
+│   │   └── index.html
 │   ├── src/
-│   │   ├── components/     # React components
-│   │   │   ├── Banner/     # Banner/Slider component
-│   │   │   ├── Comments/   # Comments component
-│   │   │   ├── Reviews/    # Reviews component
-│   │   │   ├── Header/     # Header component
-│   │   │   ├── Footer/     # Footer component
-│   │   │   └── icons.tsx   # Icon components
+│   │   ├── components/    # React components
 │   │   ├── pages/         # Page components
-│   │   │   ├── admin/     # Admin pages
-│   │   │   ├── auth/      # Authentication pages
-│   │   │   └── ...        # Other pages
 │   │   ├── features/      # Redux slices
 │   │   ├── services/      # API services
 │   │   ├── hooks/         # Custom hooks
-│   │   ├── layouts/       # Layout components
-│   │   ├── routes/        # Routing configuration
-│   │   ├── store/         # Redux store
-│   │   ├── contexts/      # React contexts
-│   │   └── types/         # TypeScript types
-│   ├── public/            # Static files
-│   └── package.json       # Frontend dependencies
-├── server/                # Backend Node.js
+│   │   ├── types/         # TypeScript types
+│   │   └── validations/   # Yup schemas
+│   └── package.json
+├── server/                 # Backend Express
 │   ├── src/
 │   │   ├── controllers/   # Route controllers
-│   │   │   ├── authController.ts
-│   │   │   ├── productController.ts
-│   │   │   ├── cartController.ts
-│   │   │   ├── orderController.ts
-│   │   │   ├── categoryController.ts
-│   │   │   ├── reviewController.ts
-│   │   │   └── commentController.ts
 │   │   ├── models/        # Database models
-│   │   │   ├── User.ts
-│   │   │   ├── Product.ts
-│   │   │   ├── Cart.ts
-│   │   │   ├── Order.ts
-│   │   │   ├── Category.ts
-│   │   │   ├── Review.ts
-│   │   │   └── Comment.ts
 │   │   ├── routes/        # API routes
-│   │   │   ├── auth.ts
-│   │   │   ├── products.ts
-│   │   │   ├── cart.ts
-│   │   │   ├── orders.ts
-│   │   │   ├── categories.ts
-│   │   │   ├── reviews.ts
-│   │   │   └── comments.ts
 │   │   ├── middleware/    # Custom middleware
-│   │   │   └── auth.ts
-│   │   ├── config/        # Configuration files
-│   │   │   └── database.ts
-│   │   ├── utils/         # Utility functions
-│   │   │   └── asyncHandler.ts
-│   │   └── db.ts          # Database connection
+│   │   └── utils/         # Utility functions
 │   ├── uploads/           # Uploaded files
-│   ├── app.ts             # Express app setup
-│   ├── server.ts          # Server entry point
-│   └── package.json       # Backend dependencies
-├── database.sql           # Database schema
-└── README.md              # Project documentation
+│   │   ├── images/        # Product/Category images
+│   │   └── products/      # Product images
+│   └── package.json
+└── README.md
 ```
 
-## API Endpoints
+## 🔑 Tài khoản mặc định
 
-### Authentication
-- `POST /api/auth/register` - Đăng ký
-- `POST /api/auth/login` - Đăng nhập
-- `GET /api/auth/profile` - Lấy thông tin profile
-- `PUT /api/auth/profile` - Cập nhật profile
-- `GET /api/auth/users` - Lấy danh sách users (Admin)
+### **Admin**
+- **Email**: admin@example.com
+- **Password**: admin123
 
-### Products
-- `GET /api/products` - Lấy danh sách sản phẩm
-- `GET /api/products/:id` - Lấy chi tiết sản phẩm
-- `POST /api/products` - Tạo sản phẩm mới (Admin)
-- `PUT /api/products/:id` - Cập nhật sản phẩm (Admin)
-- `DELETE /api/products/:id` - Xóa sản phẩm (Admin)
+### **User thường**
+- **Email**: user@example.com
+- **Password**: user123
 
-### Categories
-- `GET /api/categories` - Lấy danh sách danh mục
-- `GET /api/categories/:id` - Lấy chi tiết danh mục
-- `POST /api/categories` - Tạo danh mục mới (Admin)
-- `PUT /api/categories/:id` - Cập nhật danh mục (Admin)
-- `DELETE /api/categories/:id` - Xóa danh mục (Admin)
+## 📸 Hình ảnh và Media
 
-### Cart
-- `GET /api/cart` - Lấy giỏ hàng
-- `POST /api/cart/items` - Thêm sản phẩm vào giỏ hàng
-- `PUT /api/cart/items/:productId` - Cập nhật số lượng
-- `DELETE /api/cart/items/:productId` - Xóa sản phẩm khỏi giỏ hàng
+### **Thư mục uploads quan trọng**
+```
+server/uploads/
+├── images/          # Banner, Category images
+├── products/        # Product images
+└── .gitkeep         # Giữ thư mục trong git
+```
 
-### Orders
-- `GET /api/orders` - Lấy danh sách đơn hàng
-- `GET /api/orders/:id` - Lấy chi tiết đơn hàng
-- `POST /api/orders` - Tạo đơn hàng mới
-- `PUT /api/orders/:id/status` - Cập nhật trạng thái đơn hàng (Admin)
+### **Thư mục public images**
+```
+client/public/images/
+├── default-cake.jpg     # Ảnh mặc định
+├── banner1.jpg         # Banner mẫu
+├── logo20shop.jpg      # Logo shop
+└── ...                 # Các ảnh khác
+```
 
-### Reviews
-- `GET /api/products/:productId/reviews` - Lấy đánh giá sản phẩm
-- `POST /api/products/:productId/reviews` - Tạo đánh giá
-- `PUT /api/reviews/:reviewId` - Cập nhật đánh giá
-- `DELETE /api/reviews/:reviewId` - Xóa đánh giá
+## 🚨 Lưu ý quan trọng
 
-### Comments
-- `GET /api/products/:productId/comments` - Lấy bình luận sản phẩm
-- `POST /api/products/:productId/comments` - Tạo bình luận
-- `PUT /api/comments/:commentId` - Cập nhật bình luận
-- `DELETE /api/comments/:commentId` - Xóa bình luận
+### **1. File uploads phải có đầy đủ**
+- **Không xóa** thư mục `server/uploads/`
+- **Không xóa** thư mục `client/public/images/`
+- Các file này chứa hình ảnh sản phẩm, banner, danh mục
 
-## Tài khoản mẫu
+### **2. Database phải có dữ liệu**
+- Import file SQL để có sản phẩm, danh mục, banner mẫu
+- Không có dữ liệu → website sẽ trống
 
-### Admin:
-- Email: admin@example.com
-- Password: admin123
+### **3. Port phải đúng**
+- **Server**: Port 5000
+- **Client**: Port 3000
+- **MySQL**: Port 3306 (mặc định)
 
-### Customer:
-- Email: customer@example.com
-- Password: customer123
+### **4. CORS và API URL**
+- Client gọi API tại `http://localhost:5000`
+- Server đã cấu hình CORS cho localhost:3000
 
-## Tính năng nổi bật
+## 🐛 Xử lý lỗi thường gặp
 
-1. **Hệ thống đánh giá và bình luận**: Khách hàng có thể đánh giá sản phẩm bằng sao và viết bình luận
-2. **Quản lý giỏ hàng**: Thêm, cập nhật, xóa sản phẩm trong giỏ hàng
-3. **Quản lý đơn hàng**: Theo dõi trạng thái đơn hàng từ đặt hàng đến giao hàng
-4. **Dashboard Admin**: Giao diện quản trị với thống kê và quản lý toàn diện
-5. **Responsive Design**: Giao diện tương thích với mọi thiết bị
-6. **Bảo mật**: JWT authentication, mã hóa mật khẩu, phân quyền người dùng
+### **Lỗi "Cannot connect to database"**
+```bash
+# Kiểm tra MySQL service
+sudo service mysql status
 
-## Đóng góp
+# Kiểm tra thông tin kết nối trong server/src/config/database.ts
+```
 
-1. Fork repository
+### **Lỗi "Port already in use"**
+```bash
+# Tìm process đang sử dụng port
+netstat -ano | findstr :5000
+netstat -ano | findstr :3000
+
+# Kill process
+taskkill /PID <process_id> /F
+```
+
+### **Lỗi "Module not found"**
+```bash
+# Xóa node_modules và cài lại
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### **Lỗi "Image not displaying"**
+- Kiểm tra thư mục `server/uploads/` có tồn tại
+- Kiểm tra server có chạy tại port 5000
+- Kiểm tra static files được serve đúng
+
+## 📱 Tính năng nâng cao
+
+### **Responsive Design**
+- Mobile-first approach
+- Tailwind CSS với breakpoints
+- Framer Motion animations
+
+### **Performance**
+- Lazy loading images
+- Code splitting
+- Redux Toolkit với RTK Query
+- Optimized bundle size
+
+### **Security**
+- JWT authentication
+- Input validation (Yup)
+- SQL injection prevention
+- File upload validation
+
+## 🤝 Đóng góp
+
+1. Fork dự án
 2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Tạo Pull Request
 
-## License
+## 📄 License
 
-MIT License - xem file [LICENSE](LICENSE) để biết thêm chi tiết. 
+Dự án này được phát hành dưới MIT License.
+
+## 📞 Liên hệ
+
+- **Email**: your-email@example.com
+- **GitHub**: [@your-username](https://github.com/your-username)
+
+---
+
+**Lưu ý**: Đây là dự án demo, vui lòng thay đổi các thông tin nhạy cảm (JWT secret, database password, API keys) trước khi deploy production. 

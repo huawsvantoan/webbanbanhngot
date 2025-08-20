@@ -105,6 +105,14 @@ export class Cart {
     return result.affectedRows > 0;
   }
 
+  static async removeItemById(cartItemId: number): Promise<boolean> {
+    const [result] = await pool.query<any>(
+      'DELETE FROM cart_items WHERE id = ?',
+      [cartItemId]
+    );
+    return result.affectedRows > 0;
+  }
+
   static async clearItems(cartId: number): Promise<boolean> {
     const [result] = await pool.query<any>(
       'DELETE FROM cart_items WHERE cart_id = ?',

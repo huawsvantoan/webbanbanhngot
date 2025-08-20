@@ -14,6 +14,7 @@ export interface IUser extends RowDataPacket {
   created_at: Date;
   updated_at: Date;
   isDeleted: number;
+  is_verified: boolean; // thêm trường này
 }
 
 export interface IPasswordResetCode {
@@ -47,13 +48,13 @@ export class User {
   static async create(data: Omit<IUser, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const [result] = await pool.query<any>(
-      'INSERT INTO users (username, email, password, full_name, address, phone, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [data.username, data.email, hashedPassword, data.full_name, data.address, data.phone, data.role || 'user']
+      'INSERT INTO users (username, email, password, full_name, address, phone, role, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [data.username, data.email, hashedPassword, data.full_name, data.address, data.phone, data.role || 'user', data.is_verified ?? false]
     );
     return result.insertId;
   }
 
-  static async update(id: number, data: Partial<IUser>): Promise<boolean> {
+  static async update(id: number, data: Partial<Omit<IUser, 'constructor'>>): Promise<boolean> {
     const fields = Object.keys(data)
       .filter(key => data[key as keyof typeof data] !== undefined)
       .map(key => `${key} = ?`);

@@ -1,88 +1,80 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '../icons';
-import { Link } from 'react-router-dom';
-
-interface Banner {
-  id: number;
-  title: string;
-  description?: string;
-  image_url: string;
-  link_url?: string;
-  is_active: boolean;
-  sort_order: number;
-}
+ 
+import { getPublicBanners, Banner as BannerType } from '../../services/bannerService';
 
 interface BannerProps {
-  banners?: Banner[];
+  banners?: BannerType[];
 }
 
-const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
+const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState<BannerType[]>([]);
+  const [, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<boolean>(false);
 
-  // Mock banners if none provided
-  const defaultBanners: Banner[] = [
-    {
-      id: 1,
-      title: 'Welcome to Our Bakery',
-      description: 'Discover our delicious cakes and pastries',
-      image_url: '/images/banner1.jpg',
-      link_url: '/products',
-      is_active: true,
-      sort_order: 1
-    },
-    {
-      id: 2,
-      title: 'Special Offers',
-      description: 'Get 20% off on birthday cakes',
-      image_url: '/images/banner2.jpg',
-      link_url: '/products?category=1',
-      is_active: true,
-      sort_order: 2
-    },
-    {
-      id: 3,
-      title: 'Wedding Collection',
-      description: 'Perfect cakes for your special day',
-      image_url: '/images/banner3.jpg',
-      link_url: '/products?category=2',
-      is_active: true,
-      sort_order: 3
+  // Fetch banners from API
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching banners...');
+        const data = await getPublicBanners();
+        console.log('Banners loaded:', data);
+        setBanners(data);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching banners:', err);
+        setError(err.response?.data?.message || 'Không thể tải banners');
+        // Fallback to empty array if API fails
+        setBanners([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // If banners are provided as props, use them; otherwise fetch from API
+    if (propBanners && propBanners.length > 0) {
+      setBanners(propBanners);
+      setLoading(false);
+    } else {
+      fetchBanners();
     }
-  ];
+  }, [propBanners]);
 
-  const activeBanners = banners.length > 0 ? banners.filter(b => b.is_active) : defaultBanners;
-
+  // Auto-slide effect
   useEffect(() => {
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (activeBanners.length <= 1) return;
+    if (banners.length <= 1) return;
 
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
+      setCurrentSlide((prev) => (prev + 1) % banners.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeBanners.length]);
+  }, [banners.length]);
+
+  // Reset image error when slide changes
+  useEffect(() => {
+    setImageError(false);
+  }, [currentSlide]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
 
   const goToPrevious = () => {
-    setCurrentSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length);
+    setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
   const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
+    setCurrentSlide((prev) => (prev + 1) % banners.length);
   };
 
   if (loading) {
     return (
-      <div className="relative h-96 bg-gray-200 animate-pulse">
+      <div className="relative h-[500px] md:h-[600px] lg:h-[700px] bg-gray-200 animate-pulse rounded-2xl">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
         </div>
@@ -90,101 +82,76 @@ const Banner: React.FC<BannerProps> = ({ banners = [] }) => {
     );
   }
 
-  if (activeBanners.length === 0) {
+  if (banners.length === 0) {
+    console.log('No banners to display');
     return null;
   }
 
   return (
-    <div className="relative h-96 md:h-[500px] overflow-hidden bg-gray-100">
+    <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden bg-gray-100 rounded-2xl shadow-xl">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.5 }}
           className="relative h-full"
         >
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url(${activeBanners[currentSlide].image_url})`,
-            }}
-          >
-            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          </div>
+                     <div
+             className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-2xl"
+             style={{
+               backgroundImage: imageError 
+                 ? 'url(/images/default-cake.jpg)' 
+                 : `url(${banners[currentSlide].image_url})`,
+               backgroundSize: 'cover',
+               backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat'
+             }}
+           >
+                         {/* Overlay gradient tăng độ tương phản chữ */}
+             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent rounded-2xl"></div>
+             
+             {/* Hidden image to check for errors */}
+             <img
+               src={banners[currentSlide].image_url}
+               alt=""
+               className="hidden"
+               onError={() => setImageError(true)}
+               onLoad={() => setImageError(false)}
+             />
+           </div>
 
-          <div className="relative h-full flex items-center">
-            <div className="container mx-auto px-4">
-              <div className="max-w-2xl text-white">
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl md:text-6xl font-bold mb-4"
-                >
-                  {activeBanners[currentSlide].title}
-                </motion.h1>
-                
-                {activeBanners[currentSlide].description && (
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-lg md:text-xl mb-8 text-gray-200"
-                  >
-                    {activeBanners[currentSlide].description}
-                  </motion.p>
-                )}
-
-                {activeBanners[currentSlide].link_url && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <Link
-                      to={activeBanners[currentSlide].link_url!}
-                      className="inline-block bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors duration-200 shadow-lg"
-                    >
-                      Shop Now
-                    </Link>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Ẩn tiêu đề và mô tả để chỉ hiển thị slider hình ảnh */}
         </motion.div>
       </AnimatePresence>
 
       {/* Navigation Arrows */}
-      {activeBanners.length > 1 && (
+      {banners.length > 1 && (
         <>
           <button
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors duration-200 backdrop-blur-sm"
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-pink-600 p-2 rounded-full transition-colors duration-200 shadow-lg backdrop-blur-sm border border-white/40"
           >
-            <Icons.ChevronLeft className="w-6 h-6" />
+            <Icons.ChevronLeft className="w-7 h-7" />
           </button>
-          
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors duration-200 backdrop-blur-sm"
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-pink-600 p-2 rounded-full transition-colors duration-200 shadow-lg backdrop-blur-sm border border-white/40"
           >
-            <Icons.ChevronRight className="w-6 h-6" />
+            <Icons.ChevronRight className="w-7 h-7" />
           </button>
         </>
       )}
-
       {/* Dots Indicator */}
-      {activeBanners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-          {activeBanners.map((_, index) => (
+      {banners.length > 1 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3">
+          {banners.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-3 h-3 rounded-full transition-colors duration-200 ${
-                index === currentSlide ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
+              className={`w-4 h-4 rounded-full border-2 border-white transition-all duration-200 ${
+                index === currentSlide ? 'bg-pink-500 scale-110 shadow-lg' : 'bg-white/60 hover:bg-pink-300'
               }`}
             />
           ))}

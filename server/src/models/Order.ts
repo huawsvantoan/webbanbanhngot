@@ -9,8 +9,7 @@ export interface IOrder extends RowDataPacket {
   phone: string;
   name: string; // Họ tên người nhận
   note?: string | null; // Ghi chú đơn hàng
-  payment_method: string; // 'cod' | 'bank'
-  payment_proof: string | null;
+  payment_method: 'cod' | 'vnpay';
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
   created_at: Date;
   updated_at: Date;
@@ -24,11 +23,20 @@ export interface IOrderItem extends RowDataPacket {
   price: number;
   created_at: Date;
   updated_at: Date;
+  product_name?: string;
+  product_image?: string;
+  product_description?: string;
 }
 
 export class Order {
   static async findAll(): Promise<IOrder[]> {
-    const [rows] = await pool.query<IOrder[]>('SELECT * FROM orders ORDER BY created_at DESC');
+    const [rows] = await pool.query<IOrder[]>(`
+      SELECT o.*, u.username as user_name, u.email as user_email, 
+             (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      ORDER BY o.created_at DESC
+    `);
     return rows;
   }
 
@@ -46,10 +54,10 @@ export class Order {
   }
 
   static async create(data: Omit<IOrder, 'id' | 'created_at' | 'updated_at'>, orderItemsData: Omit<IOrderItem, 'id' | 'created_at' | 'updated_at' | 'order_id'>[]): Promise<number> {
-    const { user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status } = data;
+    const { user_id, total_amount, shipping_address, phone, name, note, payment_method, status } = data;
     const [result] = await pool.query<any>(
-      'INSERT INTO orders (user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id, total_amount, shipping_address, phone, name, note, payment_method, payment_proof, status]
+      'INSERT INTO orders (user_id, total_amount, shipping_address, phone, name, note, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [user_id, total_amount, shipping_address, phone, name, note, payment_method, status]
     );
     const orderId = result.insertId;
 
@@ -77,10 +85,12 @@ export class Order {
   }
 
   static async getItems(orderId: number): Promise<IOrderItem[]> {
-    const [rows] = await pool.query<IOrderItem[]>(
-      'SELECT * FROM order_items WHERE order_id = ?',
-      [orderId]
-    );
+    const [rows] = await pool.query<IOrderItem[]>(`
+      SELECT oi.*, p.name as product_name, p.image_url as product_image, p.description as product_description
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+    `, [orderId]);
     return rows;
   }
 

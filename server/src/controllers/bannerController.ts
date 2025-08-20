@@ -1,49 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
+import { BannerModel, CreateBannerData } from '../models/Banner';
 
-// Placeholder for Banner Model (will be created later)
-interface Banner {
-  id: number;
-  title: string;
-  subtitle: string;
-  description: string;
-  image: string;
-  button_text: string;
-  button_link: string;
-  position: number;
-  is_active: boolean;
-}
+// @desc    Get all banners (Public)
+// @route   GET /api/banners
+// @access  Public
+export const getPublicBanners = asyncHandler(async (req: Request, res: Response) => {
+  const banners = await BannerModel.getActiveBanners();
+  res.status(200).json(banners);
+});
 
-// Mock database for now
-let banners: Banner[] = [
-  {
-    id: 1,
-    title: 'Banner 1',
-    subtitle: 'Subtitle 1',
-    description: 'Description for banner 1',
-    image: '/images/default-cake.jpg',
-    button_text: 'Shop Now',
-    button_link: '/products',
-    position: 1,
-    is_active: true,
-  },
-  {
-    id: 2,
-    title: 'Banner 2',
-    subtitle: 'Subtitle 2',
-    description: 'Description for banner 2',
-    image: '/images/default-cake.jpg',
-    button_text: 'Learn More',
-    button_link: '/about',
-    position: 2,
-    is_active: false,
-  },
-];
-
-// @desc    Get all banners
+// @desc    Get all banners (Admin)
 // @route   GET /api/admin/banners
 // @access  Admin
 export const getBanners = asyncHandler(async (req: Request, res: Response) => {
+  const banners = await BannerModel.getAllBanners();
+  res.status(200).json(banners);
+});
+
+// @desc    Get all deleted banners (Admin)
+// @route   GET /api/admin/banners/deleted
+// @access  Admin
+export const getDeletedBanners = asyncHandler(async (req: Request, res: Response) => {
+  const banners = await BannerModel.getDeletedBanners();
   res.status(200).json(banners);
 });
 
@@ -51,34 +30,66 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
 // @route   POST /api/admin/banners
 // @access  Admin
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
-  const { title, subtitle, description, image, button_text, button_link, position, is_active } = req.body;
+  console.log('Create banner request body:', req.body); // Debug log
+  const { image_url, link_url, is_active } = req.body;
+  let { title, description, position } = req.body as {
+    title?: string;
+    description?: string;
+    position?: number;
+  };
 
-  if (!title || title.trim().length < 3) {
-    return res.status(400).json({ message: 'Tiêu đề phải có ít nhất 3 ký tự' });
-  }
-  if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(title.trim())) {
-    return res.status(400).json({ message: 'Tiêu đề chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
-  }
+  // Cho phép bỏ trống tiêu đề và mô tả, chỉ giới hạn độ dài mô tả
+  title = (title ?? '').toString().trim();
+  description = (description ?? '').toString().trim();
   if (description && description.length > 255) {
     return res.status(400).json({ message: 'Mô tả không được vượt quá 255 ký tự' });
   }
-  if (image && !/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i.test(image)) {
-    return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (phải là URL ảnh)' });
+  if (image_url) {
+    // Chấp nhận đường dẫn tương đối bắt đầu bằng /
+    if (image_url.startsWith('/')) {
+      // Kiểm tra định dạng file hợp lệ
+      if (!/\.(jpg|jpeg|png|webp|gif|avif)$/i.test(image_url)) {
+        return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ (định dạng file không được hỗ trợ)' });
+      }
+    }
+    // Chấp nhận URL tuyệt đối
+    else if (image_url.startsWith('http://') || image_url.startsWith('https://')) {
+      // Bớt strict validation cho URL
+    }
+    // Chấp nhận blob URL (cho preview)
+    else if (image_url.startsWith('blob:')) {
+      // Không cần validate blob URL
+    }
+    // Chấp nhận đường dẫn upload từ server
+    else if (image_url.includes('uploads/')) {
+      // Đường dẫn từ upload server
+    }
+    else {
+      return res.status(400).json({ message: 'Đường dẫn hình ảnh không hợp lệ' });
+    }
   }
 
-  const newBanner: Banner = {
-    id: banners.length > 0 ? Math.max(...banners.map(b => b.id)) + 1 : 1,
+  // Kiểm tra vị trí trùng lặp và tự động sửa
+  if (position) {
+    const existingBanner = await BannerModel.getBannerByPosition(position);
+    if (existingBanner) {
+      // Tự động tìm vị trí tiếp theo có sẵn
+      const nextAvailablePosition = await BannerModel.getNextAvailablePosition();
+      console.log(`Vị trí ${position} đã được sử dụng, tự động chuyển sang vị trí ${nextAvailablePosition}`);
+      position = nextAvailablePosition;
+    }
+  }
+
+  const bannerData: CreateBannerData = {
     title,
-    subtitle,
     description,
-    image,
-    button_text,
-    button_link,
-    position: position || banners.length + 1,
-    is_active: is_active !== undefined ? is_active : true,
+    image_url,
+    link_url: link_url || null,
+    position: position || 1,
+    is_active: is_active !== undefined ? is_active : 1,
   };
 
-  banners.push(newBanner);
+  const newBanner = await BannerModel.createBanner(bannerData);
   return res.status(201).json(newBanner);
 });
 
@@ -87,38 +98,86 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 // @access  Admin
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { title, subtitle, description, image, button_text, button_link, position, is_active } = req.body;
+  const updateData = { ...req.body } as Partial<CreateBannerData> & { title?: string; description?: string };
 
-  let banner = banners.find(b => b.id === parseInt(id));
+  // Cho phép title/description rỗng; chỉ kiểm tra độ dài mô tả
+  if (typeof updateData.description === 'string' && updateData.description.length > 255) {
+    return res.status(400).json({ message: 'Mô tả không được vượt quá 255 ký tự' });
+  }
 
-  if (!banner) {
+  // Kiểm tra vị trí trùng lặp khi update
+  if (updateData.position) {
+    const existingBanner = await BannerModel.getBannerByPosition(updateData.position);
+    if (existingBanner && existingBanner.id !== parseInt(id)) {
+      // Tự động tìm vị trí tiếp theo có sẵn
+      const nextAvailablePosition = await BannerModel.getNextAvailablePosition();
+      console.log(`Vị trí ${updateData.position} đã được sử dụng, tự động chuyển sang vị trí ${nextAvailablePosition}`);
+      updateData.position = nextAvailablePosition;
+    }
+  }
+
+  const updatedBanner = await BannerModel.updateBanner(parseInt(id), updateData);
+
+  if (!updatedBanner) {
     return res.status(404).json({ message: 'Không tìm thấy banner' });
   }
 
-  banner.title = title || banner.title;
-  banner.subtitle = subtitle || banner.subtitle;
-  banner.description = description || banner.description;
-  banner.image = image || banner.image;
-  banner.button_text = button_text || banner.button_text;
-  banner.button_link = button_link || banner.button_link;
-  banner.position = position !== undefined ? position : banner.position;
-  banner.is_active = is_active !== undefined ? is_active : banner.is_active;
-
-  return res.status(200).json(banner);
+  return res.status(200).json(updatedBanner);
 });
 
-// @desc    Delete banner
+// @desc    Soft delete banner
 // @route   DELETE /api/admin/banners/:id
 // @access  Admin
-export const deleteBanner = asyncHandler(async (req: Request, res: Response) => {
+export const softDeleteBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const initialLength = banners.length;
-  banners = banners.filter(banner => banner.id !== parseInt(id));
+  const success = await BannerModel.softDeleteBanner(parseInt(id));
 
-  if (banners.length === initialLength) {
+  if (!success) {
     return res.status(404).json({ message: 'Không tìm thấy banner' });
   }
 
   return res.status(200).json({ message: 'Banner đã được xóa thành công' });
+});
+
+// @desc    Hard delete banner
+// @route   DELETE /api/admin/banners/:id/hard
+// @access  Admin
+export const hardDeleteBanner = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const success = await BannerModel.hardDeleteBanner(parseInt(id));
+
+  if (!success) {
+    return res.status(404).json({ message: 'Không tìm thấy banner' });
+  }
+
+  return res.status(200).json({ message: 'Banner đã được xóa vĩnh viễn' });
+});
+
+// @desc    Restore banner
+// @route   POST /api/admin/banners/:id/restore
+// @access  Admin
+export const restoreBanner = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const success = await BannerModel.restoreBanner(parseInt(id));
+
+  if (!success) {
+    return res.status(404).json({ message: 'Không tìm thấy banner' });
+  }
+
+  return res.status(200).json({ message: 'Banner đã được khôi phục thành công' });
+});
+
+// @desc    Fix duplicate positions
+// @route   POST /api/admin/banners/fix-positions
+// @access  Admin
+export const fixDuplicatePositions = asyncHandler(async (req: Request, res: Response) => {
+  await BannerModel.fixDuplicatePositions();
+  const banners = await BannerModel.getAllBanners();
+  return res.status(200).json({ 
+    message: 'Đã tự động sửa vị trí trùng lặp',
+    banners 
+  });
 }); 

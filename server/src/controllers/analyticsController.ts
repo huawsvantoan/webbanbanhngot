@@ -2,182 +2,176 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { pool } from '../config/database';
 
-// Helper function to get date range
-const getDateRange = (range: string) => {
-  const endDate = new Date();
-  let startDate = new Date();
-
-  switch (range) {
-    case '7d':
-      startDate.setDate(endDate.getDate() - 7);
-      break;
-    case '30d':
-      startDate.setDate(endDate.getDate() - 30);
-      break;
-    case '90d':
-      startDate.setDate(endDate.getDate() - 90);
-      break;
-    case '1y':
-      startDate.setFullYear(endDate.getFullYear() - 1);
-      break;
-    default:
-      startDate = new Date(0); // The beginning of time
-  }
-  return { startDate, endDate };
-};
-
 // @desc    Get analytics data
 // @route   GET /api/admin/analytics
 // @access  Admin
-export const getAnalytics = asyncHandler(async (req: Request, res: Response) => {
-  const { range = '30d' } = req.query;
-  const { startDate } = getDateRange(range as string);
+export const getAnalyticsData = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { range = '6months' } = req.query;
+    
+    let dateFilter = '';
+    switch (range) {
+      case '7days':
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+        break;
+      case '30days':
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
+        break;
+      case '3months':
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)';
+        break;
+      case '6months':
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
+        break;
+      case '1year':
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 1 YEAR)';
+        break;
+      default:
+        dateFilter = 'AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
+    }
 
-  // 1. Revenue
-  const [revenueResult] = await pool.query<any>(
-    'SELECT SUM(total_amount) as total FROM orders WHERE created_at >= ? AND status = ?',
-    [startDate, 'completed']
-  );
-  const totalRevenue = revenueResult[0].total || 0;
+    // Get monthly revenue - bao gồm cả đơn hàng đã thanh toán
+    const [monthlyRevenueResult] = await pool.execute(`
+      SELECT 
+        DATE_FORMAT(created_at, '%Y-%m') as month,
+        SUM(total_amount) as amount
+      FROM orders 
+      WHERE status IN ("delivered", "completed", "paid", "processing") 
+        AND total_amount > 0
+        ${dateFilter}
+      GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+    const monthlyRevenue = (monthlyRevenueResult as any).map((item: any) => ({
+      month: new Date(item.month + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }),
+      amount: parseFloat(item.amount)
+    }));
 
-  // 2. Orders
-  const [ordersResult] = await pool.query<any>(
-    `SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
-    FROM orders WHERE created_at >= ?`,
-    [startDate]
-  );
-  const orderStats = ordersResult[0];
+    // Get order status distribution
+    const [orderStatusResult] = await pool.execute(`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM orders 
+      WHERE 1=1 ${dateFilter}
+      GROUP BY status
+    `);
+    const orderStatusDistribution = (orderStatusResult as any).reduce((acc: any, item: any) => {
+      acc[item.status] = parseInt(item.count);
+      return acc;
+    }, {});
 
-  // 3. Customers
-  const [customersResult] = await pool.query<any>(
-    'SELECT COUNT(*) as total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as newThisMonth FROM users',
-    [startDate]
-  );
-  const customerStats = customersResult[0];
+    // Get top selling products
+    const [topProductsResult] = await pool.execute(`
+      SELECT 
+        p.id,
+        p.name,
+        p.price,
+        COALESCE(SUM(oi.quantity), 0) as total_sold
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.isDeleted = 0 
+        AND (o.status IN ("delivered", "completed") OR o.status IS NULL)
+        ${dateFilter.replace('created_at', 'o.created_at')}
+      GROUP BY p.id, p.name, p.price
+      ORDER BY total_sold DESC
+      LIMIT 10
+    `);
+    const topProducts = (topProductsResult as any).map((product: any) => ({
+      id: product.id,
+      name: product.name,
+      price: parseFloat(product.price),
+      total_sold: parseInt(product.total_sold)
+    }));
 
-  // 4. Products
-  const [productsResult] = await pool.query<any>(
-    `SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN stock <= 10 AND stock > 0 THEN 1 ELSE 0 END) as lowStock,
-      SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as outOfStock
-    FROM products`
-  );
-  const productStats = productsResult[0];
+    // Get top categories
+    const [topCategoriesResult] = await pool.execute(`
+      SELECT 
+        c.id,
+        c.name,
+        COUNT(p.id) as product_count,
+        COALESCE(SUM(oi.quantity), 0) as total_sales
+      FROM categories c
+      LEFT JOIN products p ON c.id = p.category_id AND p.isDeleted = 0
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id AND o.status IN ("delivered", "completed")
+      WHERE c.isDeleted = 0
+        ${dateFilter.replace('created_at', 'o.created_at')}
+      GROUP BY c.id, c.name
+      ORDER BY total_sales DESC
+      LIMIT 10
+    `);
+    const topCategories = (topCategoriesResult as any).map((category: any) => ({
+      id: category.id,
+      name: category.name,
+      product_count: parseInt(category.product_count),
+      total_sales: parseInt(category.total_sales)
+    }));
 
-  // Mocking growth and detailed charts for now as they require more complex queries (e.g., comparing to a previous period)
-  const mockGrowth = (value: number) => (Math.random() * value).toFixed(0);
-  
-  res.status(200).json({
-    revenue: {
-      total: totalRevenue,
-      monthly: [],
-      daily: [],
-      growth: mockGrowth(20),
-    },
-    orders: {
-      total: orderStats.total || 0,
-      pending: orderStats.pending || 0,
-      completed: orderStats.completed || 0,
-      cancelled: orderStats.cancelled || 0,
-      monthly: [],
-      daily: [],
-      growth: mockGrowth(15),
-    },
-    customers: {
-      total: customerStats.total || 0,
-      newThisMonth: customerStats.newThisMonth || 0,
-      active: 0, // Requires a definition of "active"
-      growth: mockGrowth(10),
-    },
-    products: {
-      total: productStats.total || 0,
-      lowStock: productStats.lowStock || 0,
-      outOfStock: productStats.outOfStock || 0,
-      topSelling: [],
-    },
-    categories: [],
-  });
-});
+    // Get customer growth
+    const [customerGrowthResult] = await pool.execute(`
+      SELECT 
+        DATE_FORMAT(created_at, '%Y-%m') as month,
+        COUNT(*) as count
+      FROM users 
+      WHERE role = "user" 
+        ${dateFilter}
+      GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+    const customerGrowth = (customerGrowthResult as any).map((item: any) => ({
+      month: new Date(item.month + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }),
+      count: parseInt(item.count)
+    }));
 
-export const getAnalyticsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const { range } = req.query;
+    // Get revenue by day (last 30 days) - bao gồm cả đơn hàng đã thanh toán
+    const [revenueByDayResult] = await pool.execute(`
+      SELECT 
+        DATE(created_at) as date,
+        SUM(total_amount) as amount
+      FROM orders 
+      WHERE status IN ("delivered", "completed", "paid", "processing") 
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND total_amount > 0
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+      LIMIT 30
+    `);
+    const revenueByDay = (revenueByDayResult as any).map((item: any) => ({
+      date: item.date,
+      amount: parseFloat(item.amount)
+    }));
 
-  // Mock data for analytics based on time range
-  let revenueGrowth = 15;
-  let ordersGrowth = 10;
-  let customersGrowth = 8;
+    const analyticsData = {
+      monthlyRevenue,
+      orderStatusDistribution,
+      topProducts,
+      topCategories,
+      customerGrowth,
+      revenueByDay
+    };
 
-  if (range === '7d') {
-    revenueGrowth = 5;
-    ordersGrowth = 3;
-    customersGrowth = 2;
-  } else if (range === '90d') {
-    revenueGrowth = 25;
-    ordersGrowth = 20;
-    customersGrowth = 15;
-  } else if (range === '1y') {
-    revenueGrowth = 50;
-    ordersGrowth = 40;
-    customersGrowth = 30;
+    // Debug info
+    console.log('Analytics data:', {
+      monthlyRevenueCount: monthlyRevenue.length,
+      revenueByDayCount: revenueByDay.length,
+      revenueByDayData: revenueByDay,
+      totalMonthlyRevenue: monthlyRevenue.reduce(
+        (sum: number, item: { amount: number }) => sum + (item?.amount ?? 0),
+        0
+      ),
+      totalRevenueByDay: revenueByDay.reduce(
+        (sum: number, item: { amount: number }) => sum + (item?.amount ?? 0),
+        0
+      )
+    });
+
+    return res.status(200).json(analyticsData);
+  } catch (error) {
+    console.error('Analytics data error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
-
-  const data = {
-    revenue: {
-      total: 125000,
-      monthly: [
-        { month: 'Tháng 1', amount: 10000 },
-        { month: 'Tháng 2', amount: 12000 },
-        { month: 'Tháng 3', amount: 15000 },
-        { month: 'Tháng 4', amount: 18000 },
-        { month: 'Tháng 5', amount: 20000 },
-        { month: 'Tháng 6', amount: 22000 },
-      ],
-      daily: [], // Placeholder for daily data
-      growth: revenueGrowth,
-    },
-    orders: {
-      total: 1200,
-      pending: 50,
-      completed: 1000,
-      cancelled: 150,
-      monthly: [
-        { month: 'Tháng 1', count: 100 },
-        { month: 'Tháng 2', count: 120 },
-        { month: 'Tháng 3', count: 150 },
-        { month: 'Tháng 4', count: 180 },
-        { month: 'Tháng 5', count: 200 },
-        { month: 'Tháng 6', count: 220 },
-      ],
-      daily: [], // Placeholder for daily data
-      growth: ordersGrowth,
-    },
-    customers: {
-      total: 500,
-      newThisMonth: 30,
-      active: 450,
-      growth: customersGrowth,
-    },
-    products: {
-      total: 250,
-      lowStock: 15,
-      outOfStock: 5,
-      topSelling: [
-        { id: 1, name: 'Bánh Kem Dâu', sales: 120, revenue: 1200 },
-        { id: 2, name: 'Bánh Mì Ngọt', sales: 90, revenue: 450 },
-        { id: 3, name: 'Bánh Tart Trứng', sales: 75, revenue: 600 },
-      ],
-    },
-    categories: [
-      { name: 'Bánh kem', count: 50, revenue: 50000 },
-      { name: 'Bánh mì', count: 80, revenue: 25000 },
-      { name: 'Bánh ngọt', count: 120, revenue: 35000 },
-    ],
-  };
-
-  return res.status(200).json(data);
 }); 

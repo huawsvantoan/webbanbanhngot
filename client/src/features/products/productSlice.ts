@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction, ActionReducerMapBuilder } from '@reduxjs/toolkit';
-import productService, { Product, CreateProductData, UpdateProductData } from '../../services/productService';
+import productService, { Product, CreateProductData, UpdateProductData, PaginatedResponse } from '../../services/productService';
 
 interface ProductState {
   products: Product[];
@@ -8,6 +8,8 @@ interface ProductState {
   error: string | null;
   totalPages: number;
   currentPage: number;
+  total: number;
+  limit: number;
 }
 
 const initialState: ProductState = {
@@ -17,23 +19,25 @@ const initialState: ProductState = {
   error: null,
   totalPages: 1,
   currentPage: 1,
+  total: 0,
+  limit: 12,
 };
 
 export const fetchProducts = createAsyncThunk<
-  Product[],
+  PaginatedResponse<Product>,
   { page?: number; limit?: number; search?: string; category?: number },
   { rejectValue: string }
 >('products/fetchProducts', async (params, { rejectWithValue }) => {
   try {
-    let products: Product[] = [];
-    if (params.search) {
-      products = await productService.searchProducts(params.search);
-    } else if (params.category) {
-      products = await productService.getProductsByCategory(params.category);
+    const { page = 1, limit = 12, search, category } = params;
+    
+    if (search) {
+      return await productService.searchProducts(search, page, limit);
+    } else if (category) {
+      return await productService.getProductsByCategory(category, page, limit);
     } else {
-      products = await productService.getAllProducts();
+      return await productService.getAllProducts(page, limit);
     }
-    return products;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to fetch products');
   }
@@ -111,10 +115,13 @@ const productSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchProducts.fulfilled, (state: ProductState, action: PayloadAction<Product[]>) => {
+      .addCase(fetchProducts.fulfilled, (state: ProductState, action: PayloadAction<PaginatedResponse<Product>>) => {
         state.loading = false;
-        state.products = action.payload;
-        state.totalPages = Math.ceil(action.payload.length / 10); // Assuming 10 items per page
+        state.products = action.payload.data;
+        state.total = action.payload.total;
+        state.totalPages = action.payload.totalPages;
+        state.currentPage = action.payload.currentPage;
+        state.limit = action.payload.limit;
       })
       .addCase(fetchProducts.rejected, (state: ProductState, action) => {
         state.loading = false;
@@ -141,7 +148,7 @@ const productSlice = createSlice({
       .addCase(createProduct.fulfilled, (state: ProductState) => {
         state.loading = false;
         // Refresh the products list after creating a new product
-        state.products = [];
+        // The fetchProducts thunk will handle updating the state
       })
       .addCase(createProduct.rejected, (state: ProductState, action) => {
         state.loading = false;
@@ -155,7 +162,7 @@ const productSlice = createSlice({
       .addCase(updateProduct.fulfilled, (state: ProductState) => {
         state.loading = false;
         // Refresh the products list after updating a product
-        state.products = [];
+        // The fetchProducts thunk will handle updating the state
         state.currentProduct = null;
       })
       .addCase(updateProduct.rejected, (state: ProductState, action) => {
@@ -169,7 +176,8 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state: ProductState, action: PayloadAction<void, string, { arg: number }>) => {
         state.loading = false;
-        state.products = state.products.filter(p => p.id !== action.meta.arg);
+        // Refresh the products list after deleting a product
+        // The fetchProducts thunk will handle updating the state
         if (state.currentProduct?.id === action.meta.arg) {
           state.currentProduct = null;
         }

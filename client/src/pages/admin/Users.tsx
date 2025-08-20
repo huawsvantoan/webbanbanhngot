@@ -224,15 +224,17 @@ const AdminUsers: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <button
-                              onClick={() => {
-                                setUserToUpdate(user);
-                                setShowRoleModal(true);
-                              }}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              Đổi quyền
-                            </button>
+                            {user.role !== 'admin' && (
+                              <button
+                                onClick={() => {
+                                  setUserToUpdate(user);
+                                  setShowRoleModal(true);
+                                }}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                Đổi quyền
+                              </button>
+                            )}
                             {user.role !== 'admin' && (
                               <button
                                 onClick={() => handleDeleteClick(user)}

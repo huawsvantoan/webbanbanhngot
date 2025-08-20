@@ -1,11 +1,115 @@
 import { Request, Response } from 'express';
 import { Category, ICategory } from '../models/Category';
+import { pool } from '../config/database';
+
+// Test API để kiểm tra dữ liệu
+export const testData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Kiểm tra categories
+    const [categories] = await pool.query('SELECT id, name FROM categories WHERE isDeleted = 0');
+    console.log('Categories:', categories);
+    
+    // Kiểm tra products
+    const [products] = await pool.query('SELECT id, name, category_id FROM products WHERE isDeleted = 0');
+    console.log('Products:', products);
+    
+    // Kiểm tra products theo category
+    const [productsByCategory] = await pool.query(`
+      SELECT 
+        c.id as category_id,
+        c.name as category_name,
+        COUNT(p.id) as product_count
+      FROM categories c
+      LEFT JOIN products p ON c.id = p.category_id AND p.isDeleted = 0
+      WHERE c.isDeleted = 0
+      GROUP BY c.id, c.name
+    `);
+    console.log('Products by category:', productsByCategory);
+    
+    res.json({
+      categories,
+      products,
+      productsByCategory
+    });
+  } catch (error) {
+    console.error('Test data error:', error);
+    res.status(500).json({ message: 'Error testing data' });
+  }
+};
+
+// API để cập nhật category_id cho sản phẩm
+export const updateProductCategories = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Cập nhật category_id cho các sản phẩm dựa trên tên
+    const updates = [
+      // Bánh bao -> category 38 (Bánh bao)
+      { name: 'Bánh bao nhân thịt', category_id: 38 },
+      { name: 'Bánh bao nhân trứng muối', category_id: 38 },
+      { name: 'Bánh bao chay', category_id: 38 },
+      
+      // Bánh bông lan -> category 20 (bánh bông loan)
+      { name: 'Bánh bông lan trứng muối', category_id: 20 },
+      { name: 'Bánh bông lan socola', category_id: 20 },
+      { name: 'Bánh bông lan dừa', category_id: 20 },
+      
+      // Bánh kem -> category 11 (bánh kem)
+      { name: 'Bánh kem socola', category_id: 11 },
+      { name: 'Bánh kem dâu tây', category_id: 11 },
+      { name: 'Bánh kem vani', category_id: 11 },
+      
+      // Bánh mì -> category 7 (bánh mì)
+      { name: 'Bánh mì thịt nướng', category_id: 7 },
+      { name: 'Bánh mì pate', category_id: 7 },
+      { name: 'Bánh mì chả cá', category_id: 7 },
+      { name: 'Bánh mì xúc xích', category_id: 7 },
+      
+      // Bánh ngọt -> category 21 (Bánh ngọt)
+      { name: 'Bánh cheesecake', category_id: 21 },
+      { name: 'Bánh brownie', category_id: 21 },
+      { name: 'Bánh socola sữa', category_id: 21 }
+    ];
+    
+    let updatedCount = 0;
+    for (const update of updates) {
+      const [result] = await pool.query(
+        'UPDATE products SET category_id = ? WHERE name = ? AND isDeleted = 0',
+        [update.category_id, update.name]
+      );
+      const affectedRows = (result as any).affectedRows || 0;
+      if (affectedRows > 0) {
+        updatedCount++;
+        console.log(`Updated ${update.name} to category ${update.category_id}`);
+      }
+    }
+    
+    res.json({ 
+      message: `Updated ${updatedCount} products`,
+      updatedCount 
+    });
+  } catch (error) {
+    console.error('Update categories error:', error);
+    res.status(500).json({ message: 'Error updating categories' });
+  }
+};
 
 export const getAllCategories = async (req: Request, res: Response): Promise<void> => {
   try {
     const includeDeleted = req.query.includeDeleted === 'true';
     const categories = await Category.findAll(includeDeleted);
-    res.json(categories);
+    
+    // Thêm số lượng sản phẩm cho mỗi category
+    const categoriesWithProductCount = await Promise.all(
+      categories.map(async (category) => {
+        const productCount = await Category.getProductCount(category.id);
+        console.log(`Category ${category.name} (ID: ${category.id}) has ${productCount} products`);
+        return {
+          ...category,
+          product_count: productCount
+        };
+      })
+    );
+    
+    res.json(categoriesWithProductCount);
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({ message: 'Error fetching categories' });
@@ -46,8 +150,8 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
       res.status(400).json({ message: 'Tên danh mục phải có ít nhất 3 ký tự' });
       return;
     }
-    if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(name.trim())) {
-      res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
+    if (!/^[a-zA-ZÀ-ỹ0-9_\s:]+$/.test(name.trim())) {
+      res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới, khoảng trắng và dấu hai chấm' });
       return;
     }
     if (description && description.length > 255) {
@@ -86,8 +190,8 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ message: 'Tên danh mục phải có ít nhất 3 ký tự' });
         return;
       }
-      if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(name.trim())) {
-        res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
+      if (!/^[a-zA-ZÀ-ỹ0-9_\s:]+$/.test(name.trim())) {
+        res.status(400).json({ message: 'Tên danh mục chỉ được chứa chữ, số, dấu gạch dưới, khoảng trắng và dấu hai chấm' });
         return;
       }
     }
@@ -137,12 +241,10 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // Soft delete all products in this category first
     const productCount = await Category.getProductCount(categoryId);
     if (productCount > 0) {
-      res.status(400).json({ 
-        message: `Cannot delete category. It contains ${productCount} product(s).` 
-      });
-      return;
+      await Category.softDeleteProductsInCategory(categoryId);
     }
 
     const success = await Category.delete(categoryId);
@@ -151,7 +253,9 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    res.json({ message: 'Category soft-deleted successfully' });
+    res.json({ 
+      message: `Category soft-deleted successfully${productCount > 0 ? ` along with ${productCount} product(s)` : ''}` 
+    });
   } catch (error) {
     console.error('Error soft-deleting category:', error);
     res.status(500).json({ message: 'Error soft-deleting category' });

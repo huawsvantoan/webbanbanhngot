@@ -42,8 +42,8 @@ const authService = {
     return response.data;
   },
 
-  async updateProfile(data: Partial<User>): Promise<{ message: string }> {
-    const response = await api.put<{ message: string }>('/auth/profile', data);
+  async updateProfile(data: Partial<User>): Promise<{ message: string; user: User }> {
+    const response = await api.put<{ message: string; user: User }>('/auth/profile', data);
     return response.data;
   },
 

@@ -22,6 +22,12 @@ const ProductForm: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Các trường mới
+  const [is_featured, setIsFeatured] = useState(false);
+  const [is_hot, setIsHot] = useState(false);
+  const [discount_percent, setDiscountPercent] = useState<string>('');
+  const [original_price, setOriginalPrice] = useState<string>('');
 
   const formik = useFormik({
     initialValues: {
@@ -30,6 +36,10 @@ const ProductForm: React.FC = () => {
       price: '',
       stock: '',
       description: '',
+      is_featured: false,
+      is_hot: false,
+      discount_percent: '',
+      original_price: '',
     },
     validationSchema: productSchema.pick(['name', 'category_id', 'price', 'stock', 'description']),
     enableReinitialize: true,
@@ -39,10 +49,16 @@ const ProductForm: React.FC = () => {
       try {
         const formData = new FormData();
         formData.append('name', values.name);
-        formData.append('description', values.description);
+        formData.append('description', values.description || '');
         formData.append('price', values.price.toString());
         formData.append('category_id', values.category_id.toString());
         formData.append('stock', values.stock.toString());
+        formData.append('is_featured', is_featured.toString());
+        formData.append('is_hot', is_hot.toString());
+        formData.append('discount_percent', (discount_percent || '0').toString());
+        if (original_price && original_price !== '') {
+          formData.append('original_price', original_price.toString());
+        }
         if (image) {
           formData.append('image', image);
         } else if (imageUrl) {
@@ -75,7 +91,7 @@ const ProductForm: React.FC = () => {
         const response = await api.get('/categories');
         setCategories(response.data);
       } catch (err: any) {
-        toast.error('Failed to fetch categories: ' + (err.response?.data?.message || err.message));
+        toast.error('Không thể tải danh mục: ' + (err.response?.data?.message || err.message));
       }
     };
     fetchCategories();
@@ -92,11 +108,19 @@ const ProductForm: React.FC = () => {
             price: product.price ? String(product.price) : '',
             stock: product.stock ? String(product.stock) : '',
             description: product.description || '',
+            is_featured: product.is_featured || false,
+            is_hot: product.is_hot || false,
+            discount_percent: product.discount_percent ? String(product.discount_percent) : '',
+            original_price: product.original_price ? String(product.original_price) : '',
           });
           setImageUrl(product.image_url || null);
+          setIsFeatured(product.is_featured || false);
+          setIsHot(product.is_hot || false);
+          setDiscountPercent(product.discount_percent ? String(product.discount_percent) : '');
+          setOriginalPrice(product.original_price ? String(product.original_price) : '');
         } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to fetch product details');
-          toast.error('Failed to fetch product details: ' + (err.response?.data?.message || err.message));
+          setError(err.response?.data?.message || 'Không thể tải thông tin sản phẩm');
+          toast.error('Không thể tải thông tin sản phẩm: ' + (err.response?.data?.message || err.message));
         } finally {
           setLoading(false);
         }
@@ -120,12 +144,12 @@ const ProductForm: React.FC = () => {
           <button onClick={() => navigate('/admin/products')} className="text-gray-600 hover:text-gray-900 mr-4">
             <Icons.ArrowLeft size={24} />
           </button>
-          <h1 className="text-3xl font-bold text-gray-800">{isEditMode ? 'Edit Product' : 'Add New Product'}</h1>
+          <h1 className="text-3xl font-bold text-gray-800">{isEditMode ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới'}</h1>
         </div>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong className="font-bold">Error!</strong>
+            <strong className="font-bold">Lỗi!</strong>
             <span className="block sm:inline"> {error}</span>
           </div>
         )}
@@ -215,8 +239,62 @@ const ProductForm: React.FC = () => {
             )}
           </div>
 
+          {/* Các trường mới cho tính năng nổi bật/hot */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={is_featured}
+                  onChange={(e) => setIsFeatured(e.target.checked)}
+                  className="rounded border-gray-300 text-pink-600 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">Sản phẩm nổi bật</span>
+              </label>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={is_hot}
+                  onChange={(e) => setIsHot(e.target.checked)}
+                  className="rounded border-gray-300 text-pink-600 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">Sản phẩm bán chạy (HOT)</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label htmlFor="discount_percent" className="block text-sm font-medium text-gray-700 mb-1">Phần trăm giảm giá (%)</label>
+              <input
+                type="number"
+                id="discount_percent"
+                value={discount_percent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                min="0"
+                max="100"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label htmlFor="original_price" className="block text-sm font-medium text-gray-700 mb-1">Giá gốc (trước khi giảm)</label>
+              <input
+                type="number"
+                id="original_price"
+                value={original_price}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+                step="0.01"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                placeholder="Giá gốc (nếu có giảm giá)"
+              />
+            </div>
+          </div>
+
           <div className="mb-6">
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh sản phẩm</label>
             <input
               type="file"
               id="image"
@@ -226,14 +304,14 @@ const ProductForm: React.FC = () => {
             />
             {(imageUrl && !image) && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Current Image:</p>
-                <img src={imageUrl} alt="Current Product" className="h-32 w-32 object-cover rounded-lg shadow-md" />
+                <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
+                <img src={imageUrl} alt="Ảnh sản phẩm hiện tại" className="h-32 w-32 object-cover rounded-lg shadow-md" />
               </div>
             )}
             {image && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">New Image Preview:</p>
-                <img src={URL.createObjectURL(image)} alt="New Product Preview" className="h-32 w-32 object-cover rounded-lg shadow-md" />
+                <p className="text-sm text-gray-600 mb-2">Xem trước ảnh mới:</p>
+                <img src={URL.createObjectURL(image)} alt="Xem trước ảnh sản phẩm mới" className="h-32 w-32 object-cover rounded-lg shadow-md" />
               </div>
             )}
           </div>
@@ -244,7 +322,7 @@ const ProductForm: React.FC = () => {
               disabled={loading}
               className="bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : (isEditMode ? 'Update Product' : 'Add Product')}
+              {loading ? 'Đang lưu...' : (isEditMode ? 'Cập Nhật Sản Phẩm' : 'Thêm Sản Phẩm')}
             </button>
           </div>
         </form>

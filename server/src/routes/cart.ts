@@ -13,5 +13,7 @@ router.post('/', asyncHandler(cartController.addToCart));
 router.put('/:productId', asyncHandler(cartController.updateCartItem));
 router.delete('/:productId', asyncHandler(cartController.removeFromCart));
 router.delete('/', asyncHandler(cartController.clearCart));
+router.put('/items/:id', asyncHandler(cartController.updateCartItemById));
+router.delete('/items/:id', asyncHandler(cartController.removeCartItemById));
 
 export default router; 

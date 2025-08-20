@@ -8,10 +8,14 @@ const router = Router();
 
 router.get('/', asyncHandler(productController.getAllProducts));
 router.get('/search', asyncHandler(productController.searchProducts));
+router.get('/featured', asyncHandler(productController.getFeaturedProducts));
+router.get('/hot', asyncHandler(productController.getHotProducts));
 router.get('/:id', asyncHandler(productController.getProductById));
 router.post('/', protect, authorize(['admin']), productController.upload.single('image'), asyncHandler(productController.createProduct));
 router.put('/:id', protect, authorize(['admin']), productController.upload.single('image'), asyncHandler(productController.updateProduct));
 router.put('/:id/restore', protect, authorize(['admin']), asyncHandler(productController.restoreProduct));
+router.put('/:id/toggle-featured', protect, authorize(['admin']), asyncHandler(productController.toggleFeatured));
+router.put('/:id/toggle-hot', protect, authorize(['admin']), asyncHandler(productController.toggleHot));
 router.delete('/:id', protect, authorize(['admin']), asyncHandler(productController.deleteProduct));
 router.delete('/:id/permanent', protect, authorize(['admin']), asyncHandler(productController.deleteProductPermanent));
 router.post('/:id/reviews', protect, reviewController.createReview);

@@ -6,6 +6,12 @@ import { asyncHandler } from '../utils/asyncHandler';
 console.log("Category routes loaded.");
 const router: Router = Router();
 
+// Test route
+router.get('/test', asyncHandler(categoryController.testData));
+
+// Update product categories route
+router.post('/update-categories', protect, authorize(['admin']), asyncHandler(categoryController.updateProductCategories));
+
 // Public routes
 router.get('/', asyncHandler(categoryController.getAllCategories));
 router.get('/:id', asyncHandler(categoryController.getCategoryById));

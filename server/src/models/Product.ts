@@ -12,6 +12,14 @@ export interface IProduct extends RowDataPacket {
   created_at: Date;
   updated_at: Date;
   isDeleted: number;
+  // Các trường mới
+  is_featured?: boolean;
+  is_hot?: boolean;
+  discount_percent?: number;
+  original_price?: number;
+  view_count?: number;
+  rating_avg?: number;
+  rating_count?: number;
 }
 
 export class Product {
@@ -19,12 +27,17 @@ export class Product {
     options: {
       includeDeleted?: boolean,
       search?: string,
-      categoryId?: number
+      categoryId?: number,
+      featured?: boolean,
+      hot?: boolean,
+      limit?: number,
+      offset?: number
     } = {}
   ): Promise<IProduct[]> {
-    const { includeDeleted = false, search, categoryId } = options;
+    const { includeDeleted = false, search, categoryId, featured, hot, limit, offset } = options;
     let query = 'SELECT * FROM products WHERE 1=1';
     const params: any[] = [];
+    
     if (!includeDeleted) {
       query += ' AND isDeleted = 0';
     }
@@ -36,6 +49,26 @@ export class Product {
       query += ' AND category_id = ?';
       params.push(categoryId);
     }
+    if (featured !== undefined) {
+      query += ' AND is_featured = ?';
+      params.push(featured);
+    }
+    if (hot !== undefined) {
+      query += ' AND is_hot = ?';
+      params.push(hot);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    if (limit) {
+      query += ' LIMIT ?';
+      params.push(limit);
+      if (offset) {
+        query += ' OFFSET ?';
+        params.push(offset);
+      }
+    }
+    
     const [rows] = await pool.query<IProduct[]>(query, params);
     return rows.map(product => ({ ...product, price: parseFloat(product.price as any) }));
   }
@@ -47,11 +80,31 @@ export class Product {
   }
 
   static async create(data: Omit<IProduct, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
-    const [result] = await pool.query<any>(
-      'INSERT INTO products (name, description, price, category_id, image_url, stock) VALUES (?, ?, ?, ?, ?, ?)',
-      [data.name, data.description, data.price, data.category_id, data.image_url, data.stock]
-    );
-    return result.insertId;
+    try {
+      console.log('Creating product with data:', data);
+      
+      const [result] = await pool.query<any>(
+        'INSERT INTO products (name, description, price, category_id, image_url, stock, is_featured, is_hot, discount_percent, original_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          data.name, 
+          data.description || '', 
+          data.price, 
+          data.category_id, 
+          data.image_url || '/images/default-cake.jpg', 
+          data.stock,
+          data.is_featured || false,
+          data.is_hot || false,
+          data.discount_percent || 0,
+          data.original_price || null
+        ]
+      );
+      
+      console.log('Product created with ID:', result.insertId);
+      return result.insertId;
+    } catch (error) {
+      console.error('Database error in Product.create:', error);
+      throw error;
+    }
   }
 
   static async update(id: number, data: Partial<IProduct>): Promise<boolean> {
@@ -89,5 +142,38 @@ export class Product {
 
   static async deletePermanent(id: number): Promise<any> {
     return pool.query('DELETE FROM products WHERE id = ?', [id]);
+  }
+
+  // Các method mới cho tính năng nổi bật/hot
+  static async getFeaturedProducts(limit: number = 6): Promise<IProduct[]> {
+    const [rows] = await pool.query<IProduct[]>(
+      'SELECT * FROM products WHERE is_featured = TRUE AND isDeleted = 0 ORDER BY created_at DESC LIMIT ?',
+      [limit]
+    );
+    return rows.map(product => ({ ...product, price: parseFloat(product.price as any) }));
+  }
+
+  static async getHotProducts(limit: number = 6): Promise<IProduct[]> {
+    const [rows] = await pool.query<IProduct[]>(
+      'SELECT * FROM products WHERE is_hot = TRUE AND isDeleted = 0 ORDER BY view_count DESC, created_at DESC LIMIT ?',
+      [limit]
+    );
+    return rows.map(product => ({ ...product, price: parseFloat(product.price as any) }));
+  }
+
+  static async incrementViewCount(id: number): Promise<boolean> {
+    const [result] = await pool.query<any>(
+      'UPDATE products SET view_count = view_count + 1 WHERE id = ?',
+      [id]
+    );
+    return result.affectedRows > 0;
+  }
+
+  static async updateRating(id: number, ratingAvg: number, ratingCount: number): Promise<boolean> {
+    const [result] = await pool.query<any>(
+      'UPDATE products SET rating_avg = ?, rating_count = ? WHERE id = ?',
+      [ratingAvg, ratingCount, id]
+    );
+    return result.affectedRows > 0;
   }
 } 

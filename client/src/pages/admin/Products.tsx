@@ -18,6 +18,8 @@ const AdminProducts: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [showPermanentDeleteModal, setShowPermanentDeleteModal] = useState(false);
+  const [productToPermanentDelete, setProductToPermanentDelete] = useState<Product | null>(null);
 
   useEffect(() => {
     console.log("AdminProducts useEffect - isAdmin:", isAdmin, "authLoading:", authLoading);
@@ -34,8 +36,9 @@ const AdminProducts: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/products?includeDeleted=true');
-      setProducts(response.data);
+      const response = await api.get('/products?includeDeleted=true&limit=1000');
+      // API bây giờ trả về { data: [...], total, totalPages, ... }
+      setProducts(response.data.data || response.data);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch products');
@@ -63,10 +66,10 @@ const AdminProducts: React.FC = () => {
 
     try {
       await api.delete(`/products/${productToDelete.id}`);
-      toast.success('Product deleted successfully');
+      toast.success('Sản phẩm đã được xóa mềm');
       fetchProducts();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete product');
+      toast.error(err.response?.data?.message || 'Xóa sản phẩm thất bại');
     } finally {
       setShowDeleteModal(false);
       setProductToDelete(null);
@@ -83,13 +86,42 @@ const AdminProducts: React.FC = () => {
     }
   };
 
-  const handleDeletePermanent = async (id: number) => {
+  const handlePermanentDeleteClick = (product: Product) => {
+    setProductToPermanentDelete(product);
+    setShowPermanentDeleteModal(true);
+  };
+
+  const handlePermanentDeleteConfirm = async () => {
+    if (!productToPermanentDelete) return;
     try {
-      await api.delete(`/admin/products/${id}/permanent`);
+      await api.delete(`/admin/products/${productToPermanentDelete.id}/permanent`);
       toast.success('Sản phẩm đã được xóa vĩnh viễn');
       fetchProducts();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Xóa vĩnh viễn sản phẩm thất bại');
+    } finally {
+      setShowPermanentDeleteModal(false);
+      setProductToPermanentDelete(null);
+    }
+  };
+
+  const handleToggleFeatured = async (id: number) => {
+    try {
+      await api.put(`/products/${id}/toggle-featured`);
+      toast.success('Cập nhật trạng thái nổi bật thành công');
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cập nhật trạng thái nổi bật thất bại');
+    }
+  };
+
+  const handleToggleHot = async (id: number) => {
+    try {
+      await api.put(`/products/${id}/toggle-hot`);
+      toast.success('Cập nhật trạng thái HOT thành công');
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cập nhật trạng thái HOT thất bại');
     }
   };
 
@@ -180,18 +212,26 @@ const AdminProducts: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {filteredProducts.map(product => (
-                  <tr key={product.id} className={`hover:bg-gray-50 ${product.isDeleted === 1 ? 'opacity-60' : ''}`}>
+                  <tr key={product.id} className={`hover:bg-gray-50 ${product.isDeleted === 1 ? 'opacity-60 bg-red-50' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <img
-                        src={product.image_url ? `${process.env.REACT_APP_API_URL}${product.image_url}` : product.image ? `${process.env.REACT_APP_API_URL}${product.image}` : '/images/default-cake.png'}
-                        alt={product.name}
-                        className="h-16 w-16 object-cover rounded-lg"
-                      />
+                      <div className="relative">
+                        <img
+                          src={product.image_url ? `${process.env.REACT_APP_API_URL}${product.image_url}` : product.image ? `${process.env.REACT_APP_API_URL}${product.image}` : '/images/default-cake.jpg'}
+                          alt={product.name}
+                          className="h-16 w-16 object-cover rounded-lg"
+                        />
+                        {product.isDeleted === 1 && (
+                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            Đã xóa
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{product.name}</div>
@@ -214,20 +254,55 @@ const AdminProducts: React.FC = () => {
                         {product.stock} sản phẩm
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleFeatured(product.id)}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
+                              product.is_featured
+                                ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {product.is_featured ? '✓ Nổi bật' : 'Nổi bật'}
+                          </button>
+                          <button
+                            onClick={() => handleToggleHot(product.id)}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
+                              product.is_hot
+                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {product.is_hot ? '🔥 HOT' : 'HOT'}
+                          </button>
+                        </div>
+                        {product.discount_percent && product.discount_percent > 0 && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            -{product.discount_percent}%
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
                         {product.isDeleted === 1 ? (
                           <>
                             <button
                               onClick={() => handleRestore(product.id)}
-                              className="text-green-600 hover:text-green-900"
+                              className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                              title="Khôi phục sản phẩm này"
                             >
+                              <Icons.CheckCircle size={14} />
                               Khôi phục
                             </button>
                             <button
-                              onClick={() => handleDeletePermanent(product.id)}
-                              className="text-red-600 hover:text-red-900 ml-2"
+                              onClick={() => handlePermanentDeleteClick(product)}
+                              className="flex-1 bg-red-700 text-white px-3 py-2 rounded-lg hover:bg-red-800 transition-colors flex items-center justify-center gap-1"
+                              title="Xóa vĩnh viễn sản phẩm này"
                             >
+                              <Icons.Trash2 size={14} />
                               Xóa vĩnh viễn
                             </button>
                           </>
@@ -235,14 +310,17 @@ const AdminProducts: React.FC = () => {
                           <>
                             <button
                               onClick={() => navigate(`/admin/products/${product.id}/edit`)}
-                              className="text-indigo-600 hover:text-indigo-900"
+                              className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                             >
+                              <Icons.FolderOpen size={14} />
                               Sửa
                             </button>
                             <button
                               onClick={() => handleDeleteClick(product)}
-                              className="text-red-600 hover:text-red-900"
+                              className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
+                              title="Xóa mềm sản phẩm này"
                             >
+                              <Icons.Trash2 size={14} />
                               Xóa
                             </button>
                           </>
@@ -264,26 +342,85 @@ const AdminProducts: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           >
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-              <h3 className="text-lg font-bold mb-2 text-red-600">Xác nhận xóa sản phẩm</h3>
-              <p className="mb-4">Bạn có chắc chắn muốn xóa sản phẩm <b>{productToDelete.name}</b> không?</p>
-              <div className="flex justify-end gap-2 mt-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center justify-center text-orange-500 mb-4">
+                <Icons.AlertCircle size={48} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+                Xác nhận xóa sản phẩm
+              </h3>
+              <p className="text-gray-600 mb-6 text-center">
+                Bạn có chắc chắn muốn xóa sản phẩm <b>"{productToDelete.name}"</b>?
+                <br />
+                <span className="text-orange-600 font-semibold">Sản phẩm sẽ được chuyển vào thùng rác.</span>
+              </p>
+              <div className="flex justify-end gap-4">
                 <button
-                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
                   onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                 >
                   Đóng
                 </button>
                 <button
-                  className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
                   onClick={handleDeleteConfirm}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
                 >
                   Xác nhận xóa
                 </button>
               </div>
-            </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Permanent Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showPermanentDeleteModal && productToPermanentDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center justify-center text-red-500 mb-4">
+                <Icons.AlertCircle size={48} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-red-600 text-center">
+                Xác nhận xóa vĩnh viễn
+              </h3>
+              <p className="text-gray-600 mb-6 text-center">
+                Bạn có chắc chắn muốn <b>xóa vĩnh viễn</b> sản phẩm <b>"{productToPermanentDelete.name}"</b>? 
+                <br />
+                <span className="text-red-600 font-semibold">Hành động này không thể hoàn tác!</span>
+              </p>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowPermanentDeleteModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={handlePermanentDeleteConfirm}
+                  className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors font-medium"
+                >
+                  Xác nhận xóa vĩnh viễn
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

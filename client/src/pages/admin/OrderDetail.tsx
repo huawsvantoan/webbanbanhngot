@@ -11,8 +11,9 @@ interface OrderItem {
   product_id: number;
   quantity: number;
   price: number;
-  product_name: string;
+  product_name?: string;
   product_image?: string;
+  product_description?: string;
 }
 
 interface Order {
@@ -67,16 +68,88 @@ const OrderDetail: React.FC = () => {
   const handleStatusUpdate = async (newStatus: Order['status']) => {
     if (!order) return;
 
+    // Kiểm tra ràng buộc trạng thái
+    const canUpdateStatus = checkStatusTransition(order.status, newStatus);
+    if (!canUpdateStatus.allowed) {
+      toast.error(canUpdateStatus.message);
+      return;
+    }
+
     try {
       setUpdating(true);
       await api.put(`/admin/orders/${order.id}/status`, { status: newStatus });
       setOrder({ ...order, status: newStatus });
-      toast.success(`Order status updated to ${newStatus}`);
+      toast.success(`Đã cập nhật trạng thái đơn hàng thành "${getStatusLabel(newStatus)}"`);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update order status');
+      toast.error(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn hàng');
     } finally {
       setUpdating(false);
     }
+  };
+
+  // Kiểm tra logic chuyển đổi trạng thái
+  const checkStatusTransition = (currentStatus: Order['status'], newStatus: Order['status']) => {
+    // Không thể thay đổi trạng thái đã hoàn thành hoặc đã hủy
+    if (currentStatus === 'completed') {
+      return {
+        allowed: false,
+        message: 'Không thể thay đổi trạng thái đơn hàng đã hoàn thành'
+      };
+    }
+    
+    if (currentStatus === 'cancelled') {
+      return {
+        allowed: false,
+        message: 'Không thể thay đổi trạng thái đơn hàng đã hủy'
+      };
+    }
+
+    // Logic chuyển đổi trạng thái hợp lệ - Admin chỉ có thể tiến hành đơn hàng, không thể hủy
+    const validTransitions: Record<Order['status'], Order['status'][]> = {
+      pending: ['processing'], // Chỉ có thể chuyển sang đang xử lý
+      processing: ['shipped'], // Chỉ có thể chuyển sang đã giao cho đơn vị vận chuyển
+      shipped: ['delivered'], // Chỉ có thể chuyển sang đã giao hàng
+      delivered: ['completed'], // Chỉ có thể chuyển sang hoàn thành
+      completed: [], // Không thể thay đổi
+      cancelled: [] // Không thể thay đổi
+    };
+
+    const allowedTransitions = validTransitions[currentStatus];
+    if (!allowedTransitions.includes(newStatus)) {
+      return {
+        allowed: false,
+        message: `Không thể chuyển từ "${getStatusLabel(currentStatus)}" sang "${getStatusLabel(newStatus)}"`
+      };
+    }
+
+    return { allowed: true, message: '' };
+  };
+
+  // Lấy label cho trạng thái
+  const getStatusLabel = (status: Order['status']) => {
+    switch (status) {
+      case 'pending': return 'Chờ xác nhận';
+      case 'processing': return 'Đang xử lý';
+      case 'shipped': return 'Đã giao cho đơn vị vận chuyển';
+      case 'delivered': return 'Đã giao hàng';
+      case 'completed': return 'Hoàn thành';
+      case 'cancelled': return 'Đã hủy';
+      default: return status;
+    }
+  };
+
+  // Lấy các trạng thái có thể chuyển đổi từ trạng thái hiện tại
+  const getAvailableStatuses = (currentStatus: Order['status']): Order['status'][] => {
+    const validTransitions: Record<Order['status'], Order['status'][]> = {
+      pending: ['processing'], // Admin chỉ có thể tiến hành đơn hàng
+      processing: ['shipped'], // Chuyển sang đã giao cho đơn vị vận chuyển
+      shipped: ['delivered'], // Chuyển sang đã giao hàng
+      delivered: ['completed'], // Chuyển sang hoàn thành
+      completed: [], // Không thể thay đổi
+      cancelled: [] // Không thể thay đổi
+    };
+    
+    return validTransitions[currentStatus] || [];
   };
 
   const getStatusIcon = (status: string) => {
@@ -162,7 +235,7 @@ const OrderDetail: React.FC = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">${Number(order.total_amount).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">${Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
               <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(order.status)}`}>
                 {order.status === 'pending' && 'Chờ xác nhận'}
                 {order.status === 'processing' && 'Đang xử lý'}
@@ -235,23 +308,65 @@ const OrderDetail: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Sản phẩm trong đơn</h2>
               <div className="space-y-4">
-                {order.items.map((item) => (
+                {order.items.map((item) => {
+                  // Xử lý đường dẫn ảnh sản phẩm
+                  const getProductImage = (imagePath?: string) => {
+                    if (!imagePath) return '/images/default-cake.jpg';
+                    
+                    // Nếu đường dẫn bắt đầu bằng http hoặc https, sử dụng trực tiếp
+                    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                      return imagePath;
+                    }
+                    
+                    // Nếu đường dẫn bắt đầu bằng /, sử dụng trực tiếp
+                    if (imagePath.startsWith('/')) {
+                      return imagePath;
+                    }
+                    
+                    // Nếu không có / ở đầu, thêm /images/
+                    if (!imagePath.startsWith('/images/')) {
+                      return `/images/${imagePath}`;
+                    }
+                    
+                    return imagePath;
+                  };
+
+                  // Xử lý tên sản phẩm
+                  const getProductName = (name?: string) => {
+                    if (name && name.trim()) {
+                      return name;
+                    }
+                    return `Sản phẩm #${item.product_id}`;
+                  };
+
+                  return (
                   <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                    <img
-                      src={item.product_image || '/images/default-cake.jpg'}
-                      alt={item.product_name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{item.product_name}</h3>
+                      <div className="flex-shrink-0">
+                        <img
+                          src={getProductImage(item.product_image)}
+                          alt={getProductName(item.product_name)}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            // Fallback khi ảnh lỗi
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/images/default-cake.jpg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">{getProductName(item.product_name)}</h3>
                       <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
+                        {item.product_description && (
+                          <p className="text-xs text-gray-500 truncate mt-1">{item.product_description}</p>
+                        )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">${Number(item.price).toFixed(2)}</p>
+                      <div className="text-right flex-shrink-0">
+                      <p className="font-medium text-gray-900">{Number(item.price).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</p>
                       <p className="text-sm text-gray-600">Tổng: {(Number(item.price) * item.quantity).toLocaleString('vi-VN', {style: 'currency', currency: 'VND'})}</p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </motion.div>
@@ -313,29 +428,56 @@ const OrderDetail: React.FC = () => {
             {/* Status Update */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Cập nhật trạng thái</h2>
-              <div className="space-y-3">
-                {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => handleStatusUpdate(status as Order['status'])}
-                    disabled={updating || order.status === status}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      order.status === status
-                        ? 'bg-blue-50 border-blue-200 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    } ${updating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {getStatusIcon(status)}
-                    <span className="capitalize">
-                      {status === 'pending' && 'Chờ xác nhận'}
-                      {status === 'processing' && 'Đang xử lý'}
-                      {status === 'shipped' && 'Đã giao cho đơn vị vận chuyển'}
-                      {status === 'delivered' && 'Đã giao hàng'}
-                      {status === 'cancelled' && 'Đã hủy'}
-                    </span>
-                  </button>
-                ))}
+              
+              {/* Hiển thị trạng thái hiện tại */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(order.status)}
+                  <span className="font-medium">Trạng thái hiện tại: {getStatusLabel(order.status)}</span>
+                </div>
               </div>
+
+              {/* Kiểm tra xem có thể cập nhật không */}
+              {order.status === 'completed' || order.status === 'cancelled' ? (
+                <div className="text-center py-6">
+                  <div className="text-gray-500 mb-2">
+                    {order.status === 'completed' ? (
+                      <Icons.CheckCircle className="mx-auto text-green-500" size={48} />
+                    ) : (
+                      <Icons.AlertCircle className="mx-auto text-red-500" size={48} />
+                    )}
+                  </div>
+                  <p className="text-gray-600 font-medium">
+                    {order.status === 'completed' 
+                      ? 'Đơn hàng đã hoàn thành - Không thể thay đổi trạng thái'
+                      : 'Đơn hàng đã hủy - Không thể thay đổi trạng thái'
+                    }
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Chọn trạng thái mới cho đơn hàng:
+                  </p>
+                  <div className="space-y-3">
+                    {getAvailableStatuses(order.status).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => handleStatusUpdate(status)}
+                        disabled={updating}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                          'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        } ${updating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {getStatusIcon(status)}
+                        <span className="capitalize">
+                          {getStatusLabel(status)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Order Summary */}
@@ -345,28 +487,21 @@ const OrderDetail: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Phương thức:</span>
                   <span className="font-medium">
-                    {order.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
+                    {order.payment_method === 'cash' && 'Tiền mặt (Thanh toán ngay)'}
+                    {order.payment_method === 'transfer' && 'Chuyển khoản'}
+                    {!['cash', 'transfer'].includes(order.payment_method) && order.payment_method}
                   </span>
                 </div>
-                {order.payment_method === 'bank' && order.payment_proof && (
-                  <div>
-                    <span className="text-gray-600">Ảnh xác nhận chuyển khoản:</span>
-                    <img
-                      src={order.payment_proof}
-                      alt="Payment proof"
-                      className="mt-2 mb-2 rounded border-2 border-pink-400 w-40"
-                      style={{ display: 'block' }}
-                    />
+                
+                {/* Hiển thị thông tin chi tiết theo phương thức */}
+                {order.payment_method === 'cash' && (
+                  <div className="text-green-600 font-medium mt-2 p-2 bg-green-50 rounded border border-green-200">
+                    💳 Khách đã thanh toán tiền mặt tại cửa hàng.
                   </div>
                 )}
-                {order.payment_method === 'bank' && (
-                  <div className="text-green-600 font-medium mt-2">
-                    Khách đã chuyển khoản trước số tiền này.
-                  </div>
-                )}
-                {order.payment_method === 'cod' && (
-                  <div className="text-yellow-600 font-medium mt-2">
-                    Khách sẽ thanh toán khi nhận hàng (COD).
+                {order.payment_method === 'transfer' && (
+                  <div className="text-blue-600 font-medium mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                    🏦 Khách đã thanh toán bằng chuyển khoản ngân hàng.
                   </div>
                 )}
               </div>
@@ -376,7 +511,7 @@ const OrderDetail: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tạm tính:</span>
-                  <span className="font-medium">${Number(order.total_amount).toFixed(2)}</span>
+                  <span className="font-medium">{Number(order.total_amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Phí vận chuyển:</span>
