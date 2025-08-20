@@ -323,8 +323,7 @@ const AdminBannerManagement: React.FC = () => {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-extrabold text-gray-900 mb-1 line-clamp-1">{banner.title}</h3>
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{banner.description}</p>
+                  {/* Ẩn tiêu đề và mô tả trong danh sách banner */}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   {banner.isDeleted === 1 ? (
@@ -434,43 +433,7 @@ const AdminBannerManagement: React.FC = () => {
                   
                   <form onSubmit={formik.handleSubmit}>
                   <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Tiêu đề
-                        </label>
-                        <input
-                          type="text"
-                            name="title"
-                            value={formik.values.title}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                            placeholder="Nhập tiêu đề banner"
-                        />
-                          {formik.touched.title && formik.errors.title && (
-                            <div className="text-red-500 text-sm mt-1">{formik.errors.title}</div>
-                          )}
-                      </div>
-
-
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Mô tả
-                        </label>
-                        <textarea
-                            name="description"
-                            value={formik.values.description}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                          placeholder="Nhập mô tả banner"
-                        />
-                          {formik.touched.description && formik.errors.description && (
-                            <div className="text-red-500 text-sm mt-1">{formik.errors.description}</div>
-                          )}
-                      </div>
+                    {/* Ẩn các trường Tiêu đề và Mô tả theo yêu cầu */}
 
 
 

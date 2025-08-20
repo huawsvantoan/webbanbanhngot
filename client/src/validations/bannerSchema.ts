@@ -2,9 +2,9 @@ import * as Yup from 'yup';
 
 export const bannerSchema = Yup.object({
   title: Yup.string()
-    .required('Vui lòng nhập tiêu đề')
     .max(100, 'Tiêu đề tối đa 100 ký tự'),
   description: Yup.string()
+    .trim()
     .max(255, 'Mô tả tối đa 255 ký tự'),
   image_url: Yup.string()
     .test('is-valid-image-path', 'Đường dẫn ảnh không hợp lệ', function(value) {

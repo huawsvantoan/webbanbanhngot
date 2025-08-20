@@ -31,15 +31,16 @@ export const getDeletedBanners = asyncHandler(async (req: Request, res: Response
 // @access  Admin
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
   console.log('Create banner request body:', req.body); // Debug log
-  const { title, description, image_url, link_url, is_active } = req.body;
-  let { position } = req.body;
+  const { image_url, link_url, is_active } = req.body;
+  let { title, description, position } = req.body as {
+    title?: string;
+    description?: string;
+    position?: number;
+  };
 
-  if (!title || title.trim().length < 3) {
-    return res.status(400).json({ message: 'Tiêu đề phải có ít nhất 3 ký tự' });
-  }
-  if (!/^[a-zA-ZÀ-ỹ0-9_\s]+$/.test(title.trim())) {
-    return res.status(400).json({ message: 'Tiêu đề chỉ được chứa chữ, số, dấu gạch dưới và khoảng trắng' });
-  }
+  // Cho phép bỏ trống tiêu đề và mô tả, chỉ giới hạn độ dài mô tả
+  title = (title ?? '').toString().trim();
+  description = (description ?? '').toString().trim();
   if (description && description.length > 255) {
     return res.status(400).json({ message: 'Mô tả không được vượt quá 255 ký tự' });
   }
@@ -97,7 +98,12 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 // @access  Admin
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const updateData = { ...req.body };
+  const updateData = { ...req.body } as Partial<CreateBannerData> & { title?: string; description?: string };
+
+  // Cho phép title/description rỗng; chỉ kiểm tra độ dài mô tả
+  if (typeof updateData.description === 'string' && updateData.description.length > 255) {
+    return res.status(400).json({ message: 'Mô tả không được vượt quá 255 ký tự' });
+  }
 
   // Kiểm tra vị trí trùng lặp khi update
   if (updateData.position) {

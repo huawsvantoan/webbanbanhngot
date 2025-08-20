@@ -109,8 +109,8 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
                backgroundRepeat: 'no-repeat'
              }}
            >
-                         {/* Overlay gradient mạnh hơn cho chữ nổi bật trên ảnh thật */}
-             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent rounded-2xl"></div>
+                         {/* Overlay gradient tăng độ tương phản chữ */}
+             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent rounded-2xl"></div>
              
              {/* Hidden image to check for errors */}
              <img
@@ -122,33 +122,7 @@ const Banner: React.FC<BannerProps> = ({ banners: propBanners }) => {
              />
            </div>
 
-          <div className="relative h-full flex items-center">
-            <div className="container mx-auto px-4">
-              <div className="max-w-2xl text-white drop-shadow-xl">
-
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 leading-tight drop-shadow-2xl"
-                  style={{ textShadow: '0 6px 32px rgba(0,0,0,0.7)' }}
-                >
-                  {banners[currentSlide].title}
-                </motion.h1>
-                {banners[currentSlide].description && (
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 drop-shadow-xl leading-relaxed"
-                  >
-                    {banners[currentSlide].description}
-                  </motion.p>
-                )}
-
-              </div>
-            </div>
-          </div>
+          {/* Ẩn tiêu đề và mô tả để chỉ hiển thị slider hình ảnh */}
         </motion.div>
       </AnimatePresence>
 
